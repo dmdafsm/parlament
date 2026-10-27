@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Parlamentari – deputați și senatori{% endblock %}
+{% block content %}
+<h4 class="page-title">Parlamentari</h4>
+<p class="muted">Legislatura {{ legislature }}–{{ legislature + 4 }}. Grupează, filtrează și sortează după activitate.</p>
+<form id="filters" action="/parlamentari" method="get" hx-get="/parlamentari" hx-target="#results" hx-push-url="true" hx-trigger="change, input from:#q delay:400ms, submit">
+  <div class="grid">
+    <div class="s12 m6 l3 field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Nume</label></div>
+    <div class="s6 m3 l2 field label suffix border small">
+      <select name="camera" id="camera"><option value="" {{ 'selected' if not params.camera }}>Ambele camere</option><option value="cd" {{ 'selected' if params.camera == 'cd' }}>Deputați</option><option value="senat" {{ 'selected' if params.camera == 'senat' }}>Senatori</option></select>
+      <label for="camera">Camera</label><i>arrow_drop_down</i>
+    </div>
+    <div class="s6 m3 l2 field label suffix border small">
+      <select name="grupare" id="grupare">
+        {% for value, label in [("", "Fără grupare"), ("grup", "Grup parlamentar"), ("judet", "Circumscripție"), ("camera", "Cameră")] %}
+        <option value="{{ value }}" {{ 'selected' if params.grupare == value }}>{{ label }}</option>{% endfor %}
+      </select><label for="grupare">Grupează după</label><i>arrow_drop_down</i>
+    </div>
+    <div class="s6 m4 l2 field label suffix border small">
+      <select name="sort" id="sort">
+        {% for value, label in [("nume", "Nume"), ("prezenta", "Prezență la vot"), ("absente", "Absențe"), ("luari", "Luări de cuvânt"), ("initiative", "Inițiative legislative"), ("intrebari", "Întrebări și interpelări"), ("motiuni", "Moțiuni"), ("loialitate", "Vot diferit de grup"), ("traseism", "Schimbări de grup/partid")] %}
+        <option value="{{ value }}" {{ 'selected' if params.sort == value }}>{{ label }}</option>{% endfor %}
+      </select><label for="sort">Sortează după</label><i>arrow_drop_down</i>
+    </div>
+    <div class="s6 m4 l2 field label suffix border small">
+      <select name="judet" id="judet-f"><option value="">Toate</option>
+        {% for c in constituencies %}<option value="{{ c.no }}" {{ 'selected' if params.judet == c.no }}>{{ c.no }}. {{ c.name }}</option>{% endfor %}
+      </select><label for="judet-f">Circumscripție</label><i>arrow_drop_down</i>
+    </div>
+    <div class="s12 m4 l1 middle-align">
+      <label class="checkbox"><input type="checkbox" name="fosti" value="true" {{ 'checked' if params.fosti }}><span>Foști</span></label>
+    </div>
+  </div>
+  <noscript><button>Aplică</button></noscript>
+</form>
+<div id="results">{% include "_members_results.html" %}</div>
+{% endblock %}

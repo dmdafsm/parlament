@@ -1,0 +1,14 @@
+{% from "macros.html" import stage_chip, pager %}
+<div class="table-wrap"><table class="data">
+  <thead><tr><th>Număr</th><th>Titlu</th><th class="hide-s">Inițiator</th><th>Stadiu</th><th class="hide-s">Ultima etapă</th></tr></thead>
+  <tbody>
+  {% for b in bills %}
+  <tr><td style="white-space:nowrap"><a class="link" href="/lege/{{ b.id }}">{{ b.number or b.id }}</a>{% if b.urgent %}<br><span class="small-text" style="color:var(--tertiary)">urgență</span>{% endif %}</td>
+      <td><a href="/lege/{{ b.id }}">{{ b.title }}</a>{% if b.ordinance %} <span class="chip small"><span>{{ b.ordinance }}</span></span>{% endif %}</td>
+      <td class="hide-s small-text">{{ b.initiator_summary or '–' }}</td>
+      <td>{{ stage_chip(b.stage) }}{% if b.law %}<div class="small-text">{{ b.law }}</div>{% endif %}</td>
+      <td class="hide-s" style="white-space:nowrap">{{ b.last_event_on|date_ro }}</td></tr>
+  {% else %}<tr><td colspan="5">Niciun proiect găsit.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{{ pager(page, bills|length == 50, "/legi?q=" ~ (params.q|urlencode) ~ "&stadiu=" ~ (params.stadiu|urlencode) ~ ("&ordonante=true" if params.ordonante else "") ~ "&") }}

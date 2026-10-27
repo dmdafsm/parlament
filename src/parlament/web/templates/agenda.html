@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Ordinea de zi{% endblock %}
+{% block content %}
+<h4 class="page-title">Ordinea de zi a plenului</h4>
+{% if current %}
+<p class="muted">{{ current.title }}{% if current.approved_on %} · aprobată la {{ current.approved_on|date_ro }}{% endif %}</p>
+<nav class="wrap">
+  <a class="button border small" href="{{ current.url }}" rel="noopener"><i>open_in_new</i><span>Sursa oficială</span></a>
+  {% if current.pdf_url %}<a class="button border small" href="{{ current.pdf_url }}" rel="noopener"><i>picture_as_pdf</i><span>PDF</span></a>{% endif %}
+</nav>
+<div class="table-wrap"><table class="data">
+  <thead><tr><th>#</th><th>Proiect</th><th>Descriere</th></tr></thead>
+  <tbody>{% for i in items %}
+  <tr><td>{{ i.position or '–' }}</td><td style="white-space:nowrap">{% if i.bill_id %}<a class="link" href="/lege/{{ i.bill_id }}">{{ i.bill_ref }}</a>{% else %}{{ i.bill_ref or '–' }}{% endif %}{% if i.law %}<div class="small-text">{{ i.law }}</div>{% endif %}</td><td>{{ i.text }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}<p class="muted">Nicio ordine de zi colectată încă.</p>{% endif %}
+{% if agendas|length > 1 %}<h6 class="section-label">Ordini de zi anterioare</h6>
+{% for a in agendas %}<p><a class="link" href="/ordinea-de-zi?id={{ a.id }}">{{ a.title }}</a></p>{% endfor %}{% endif %}
+{% endblock %}

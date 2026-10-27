@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Proiecte legislative{% endblock %}
+{% block content %}
+<h4 class="page-title">Legi și inițiative</h4>
+<p class="muted">Proiectele de lege și propunerile legislative urmărite, cu stadiul și tot parcursul lor prin Parlament.</p>
+<form action="/legi" method="get" hx-get="/legi" hx-target="#results" hx-push-url="true" hx-trigger="change, input from:#q delay:500ms, submit">
+  <div class="grid">
+    <div class="s12 m8 field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Caută în titlu sau număr (ex.: pensii, PL-x 164/2024)</label></div>
+    <div class="s12 m4 field label suffix border small">
+      <select name="stadiu" id="stadiu"><option value="">Toate</option>{% for s in stages %}<option value="{{ s.stage }}" {{ 'selected' if params.stadiu == s.stage }}>{{ s.stage }} ({{ s.n }})</option>{% endfor %}</select>
+      <label for="stadiu">Stadiu</label><i>arrow_drop_down</i>
+    </div>
+  </div>
+  <label class="checkbox"><input type="checkbox" name="ordonante" value="true" {{ 'checked' if params.ordonante }}><span>Doar aprobări/respingeri de ordonanțe</span></label>
+  <noscript><button>Caută</button></noscript>
+</form>
+<div id="results">{% include "_bills_results.html" %}</div>
+{% endblock %}

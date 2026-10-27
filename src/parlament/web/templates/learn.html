@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} – Învață{% endblock %}
+{% block content %}
+<div class="grid">
+  <nav class="s12 l3 vertical">
+    <h6>Învață</h6>
+    {% for key, p in pages.items() %}<a class="row padding round {{ 'primary-container' if key == slug }}" href="/invata/{{ key }}"><i>{{ p.icon }}</i><span>{{ p.title }}</span></a>{% endfor %}
+  </nav>
+  <article class="s12 l9 round prose">
+    <h4>{{ page.title }}</h4>
+    {{ page.body|safe }}
+    <p class="small-text muted">Surse: Constituția României (republicată 2003), Regulamentul Camerei Deputaților, Regulamentul Senatului, Legea nr. 96/2006 privind Statutul deputaților și al senatorilor.</p>
+  </article>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Date deschise și API{% endblock %}
+{% block content %}
+<article class="prose">
+<h4 class="page-title">Date deschise și API</h4>
+<p>Datele colectate sunt publice și pot fi refolosite. Textele oficiale nu fac obiectul dreptului de autor (Legea nr. 8/1996, art. 9). Te rugăm să menționezi sursa: Camera Deputaților / Senatul României, prin acest proiect.</p>
+<h5>Fișiere CSV</h5>
+{% if files %}
+<div class="table-wrap"><table class="data"><thead><tr><th>Fișier</th><th class="num">Mărime</th><th>Actualizat</th></tr></thead>
+<tbody>{% for f in files %}<tr><td><a class="link" href="/date-deschise/{{ f.name }}.csv">{{ f.name }}.csv</a></td><td class="num">{{ (f.size / 1024)|round|int }} KB</td><td>{{ f.updated|date_ro(true) }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="muted">Exporturile se generează săptămânal (comanda <code>parlament export</code>).</p>{% endif %}
+<h5>API JSON</h5>
+<p>Documentația interactivă: <a class="link" href="/api/docs">/api/docs</a>. Exemple:</p>
+<ul>
+  <li><code>/api/v1/parlamentari?camera=cd&amp;sort=prezenta</code></li>
+  <li><code>/api/v1/parlamentari/{id}</code></li>
+  <li><code>/api/v1/proiecte?q=pensii</code>, <code>/api/v1/proiecte/{id}</code></li>
+  <li><code>/api/v1/voturi/{id}</code></li>
+</ul>
+<h5>Fluxuri RSS</h5>
+<ul>
+  <li><a class="link" href="/feed/proiecte.xml">/feed/proiecte.xml</a> – etape noi în proiecte</li>
+  <li><a class="link" href="/feed/voturi.xml">/feed/voturi.xml</a> – voturi noi</li>
+  <li><code>/feed/parlamentar/{id}.xml</code> și <code>/feed/lege/{id}.xml</code> – urmărește un parlamentar sau un proiect (link pe fiecare pagină)</li>
+</ul>
+</article>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "macros.html" import bar %}
+{% block title %}Traseism politic{% endblock %}
+{% block content %}
+<h4 class="page-title">Schimbări de grup și de partid</h4>
+<p class="muted prose">Parlamentarii sunt aleși pe listele unui partid. Unii părăsesc ulterior grupul parlamentar sau partidul. Aici sunt toate schimbările publicate de Cameră pentru legislatura curentă (cu precizie de lună). Senatul nu publică istoricul; pentru senatori apare doar situația curentă.</p>
+<h6 class="section-label">De unde și unde</h6>
+{% if flows %}
+<div class="flow">
+  {% for f in flows %}<span>{{ f.from_group }}</span><i>arrow_forward</i><span>{{ f.to_group }}</span><span class="badge none">{{ f.members }}</span>{% endfor %}
+</div>
+{% else %}<p class="muted">Nicio schimbare de grup publicată în această legislatură.</p>{% endif %}
+<h6 class="section-label">Parlamentari care au schimbat grupul sau partidul ({{ members|length }})</h6>
+<div class="table-wrap"><table class="data"><thead><tr><th>Parlamentar</th><th>Grup acum</th><th class="num">Schimbări de grup</th><th class="num">Schimbări de partid</th></tr></thead>
+<tbody>{% for m in members %}<tr><td><a class="link" href="/parlamentar/{{ m.id }}">{{ m.name }}</a> <span class="small-text muted">{{ m.chamber|role }}</span></td><td>{{ m.group_short or '–' }}</td><td class="num">{{ m.group_changes }}</td><td class="num">{{ m.party_changes }}</td></tr>
+{% else %}<tr><td colspan="4">–</td></tr>{% endfor %}</tbody></table></div>
+<h6 class="section-label">Grupurile parlamentare</h6>
+<div class="table-wrap"><table class="data"><thead><tr><th>Camera</th><th>Grup</th><th class="num">Membri</th><th>Prezență medie</th><th>Vot unitar</th><th class="num">Inițiative</th></tr></thead>
+<tbody>{% for g in groups %}<tr><td>{{ g.chamber|chamber }}</td><td><a class="link" href="/parlamentari?grup={{ g.group_short|urlencode }}&camera={{ g.chamber }}">{{ g.group_short }}</a></td><td class="num">{{ g.members }}</td><td style="min-width:8rem">{{ bar(g.attendance) }}</td><td style="min-width:8rem">{{ bar(g.loyalty) }}</td><td class="num">{{ g.bills|number }}</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

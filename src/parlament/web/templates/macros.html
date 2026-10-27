@@ -1,0 +1,33 @@
+{% macro member_link(m) -%}
+<a href="/parlamentar/{{ m.id }}" class="row">
+  <img class="avatar" src="/foto/{{ m.id }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+  <div><div class="bold">{{ m.name }}</div><div class="small-text muted">{{ m.chamber|chamber }}{% if m.group_short %} · {{ m.group_short }}{% endif %}{% if m.constituency %} · {{ m.constituency }}{% endif %}</div></div>
+</a>
+{%- endmacro %}
+
+{% macro bar(value, warn=false) -%}
+{% if value is none %}<span class="muted">–</span>{% else %}
+<div class="row no-space"><div class="bar {{ 'warn' if warn }} max"><span style="width: {{ (value * 100)|round(1) }}%"></span></div><span class="small-text" style="min-width:3rem;text-align:right">{{ value|pct }}</span></div>
+{% endif %}
+{%- endmacro %}
+
+{% macro split(v) -%}
+{% set total = (v.yes or 0) + (v.no or 0) + (v.abstain or 0) + (v.not_voted or 0) %}
+{% if total %}
+<div class="split" title="Pentru {{ v.yes }}, contra {{ v.no }}, abțineri {{ v.abstain }}, nu au votat {{ v.not_voted }}">
+  <span class="yes" style="width: {{ 100 * (v.yes or 0) / total }}%"></span><span class="no" style="width: {{ 100 * (v.no or 0) / total }}%"></span><span class="abstain" style="width: {{ 100 * (v.abstain or 0) / total }}%"></span><span class="nv" style="width: {{ 100 * (v.not_voted or 0) / total }}%"></span>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro stage_chip(stage) -%}
+{% set icons = {"lege": "check_circle", "respins": "cancel", "retras": "undo", "la promulgare": "draw", "la CCR": "balance", "în dezbatere": "pending"} %}
+<span class="chip small {{ 'primary' if stage == 'lege' else '' }}"><i class="small">{{ icons.get(stage, 'pending') }}</i><span>{{ stage }}</span></span>
+{%- endmacro %}
+
+{% macro pager(page, has_next, base) -%}
+<nav class="center-align">
+  {% if page > 1 %}<a class="button border" href="{{ base }}pagina={{ page - 1 }}"><i>chevron_left</i>Înapoi</a>{% endif %}
+  {% if has_next %}<a class="button border" href="{{ base }}pagina={{ page + 1 }}">Mai departe<i>chevron_right</i></a>{% endif %}
+</nav>
+{%- endmacro %}

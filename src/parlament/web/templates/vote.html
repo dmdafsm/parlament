@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "macros.html" import split %}
+{% block title %}Vot: {{ v.description[:80] }}{% endblock %}
+{% block content %}
+<p class="small-text muted no-margin">{{ v.chamber|chamber }} · {{ v.voted_at|date_ro(true) }}</p>
+<h5 class="page-title">{{ v.description }}</h5>
+{% if bill %}<p><a class="chip primary" href="/lege/{{ bill.id }}"><i>gavel</i><span>{{ bill.number }} – {{ bill.title[:90] }}</span></a></p>{% endif %}
+<div class="grid">
+  <div class="s6 m3 stat"><div class="value" style="color:#2e7d32">{{ v.yes }}</div><div class="label">pentru</div></div>
+  <div class="s6 m3 stat"><div class="value" style="color:#c62828">{{ v.no }}</div><div class="label">contra</div></div>
+  <div class="s6 m3 stat"><div class="value">{{ v.abstain }}</div><div class="label">abțineri</div></div>
+  <div class="s6 m3 stat"><div class="value">{{ v.present }}</div><div class="label">prezenți ({{ v.not_voted }} nu au votat)</div></div>
+</div>
+{{ split(v) }}
+<p><a class="button border small" href="{{ v.url }}" rel="noopener"><i>open_in_new</i><span>Sursa oficială</span></a></p>
+{% if breakdown %}
+<h6 class="section-label">Pe grupuri</h6>
+<div class="table-wrap"><table class="data"><thead><tr><th>Grup</th><th class="num">Pentru</th><th class="num">Contra</th><th class="num">Abțineri</th><th class="num">Nu au votat</th><th class="num">Prezenți</th></tr></thead>
+<tbody>{% for g in breakdown %}<tr><td>{{ g.group_code }}</td><td class="num">{{ g.yes }}</td><td class="num">{{ g.no }}</td><td class="num">{{ g.abstain }}</td><td class="num">{{ g.present_not_voting }}</td><td class="num">{{ g.present }}</td></tr>{% endfor %}</tbody></table></div>
+<h6 class="section-label">Vot nominal</h6>
+<div class="grid">{% for r in records %}
+  <div class="s12 m6 l4 row small-padding"><span class="choice {{ r.choice|choice_class }}">{{ r.choice|choice }}</span>{% if r.profile %}<a class="link" href="/parlamentar/{{ r.profile }}">{{ r.name }}</a>{% else %}{{ r.name }}{% endif %}<span class="small-text muted">{{ r.group_code }}</span></div>
+{% endfor %}</div>
+{% if absent %}<details><summary class="section-label bold">Nu figurează ca prezenți ({{ absent|length }})</summary>
+<p class="small-text muted">Deputați în funcție la data votului care nu apar în lista nominală (absenți, în concediu, în delegație sau la alte activități – sursa nu precizează motivul).</p>
+<p>{% for a in absent %}<a class="link" href="/parlamentar/{{ a.id }}">{{ a.name }}</a>{% if a.group_short %} <span class="muted small-text">({{ a.group_short }})</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p></details>{% endif %}
+{% else %}<p class="muted">Votul nominal nu a fost colectat pentru acest vot.</p>{% endif %}
+{% endblock %}

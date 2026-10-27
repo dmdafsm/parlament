@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "macros.html" import pager %}
+{% block title %}Voturile lui {{ m.name }}{% endblock %}
+{% block content %}
+<h4 class="page-title">Cum a votat {{ m.name }}</h4>
+<p><a class="link" href="/parlamentar/{{ m.id }}">← profil</a></p>
+<div class="table-wrap"><table class="data">
+  <thead><tr><th>Data</th><th>Subiect</th><th>Vot</th><th>Grupul</th></tr></thead>
+  <tbody>{% for v in votes %}<tr><td style="white-space:nowrap">{{ v.voted_at|date_ro(true) }}</td><td><a href="/vot/{{ v.id }}">{{ v.description }}</a></td><td><span class="choice {{ v.choice|choice_class }}">{{ v.choice|choice }}</span></td><td>{% if v.group_choice %}<span class="choice {{ v.group_choice|choice_class }}">{{ v.group_choice|choice }}</span>{% if v.against_group %} <i class="small" title="diferit de grup">call_split</i>{% endif %}{% else %}–{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ pager(page, votes|length == 100, "/parlamentar/" ~ m.id ~ "/voturi?") }}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Caută{% endblock %}
+{% block content %}
+<h4 class="page-title">Caută</h4>
+<form action="/cauta" method="get"><div class="field label prefix border"><i>search</i><input name="q" type="search" value="{{ q }}" placeholder=" " autofocus><label>Nume, temă, număr de proiect</label></div></form>
+{% if results %}
+<div class="grid">
+  <div class="s12 l6">
+    <h6>Parlamentari ({{ results.members|length }})</h6>
+    {% for m in results.members %}<p><a class="link" href="/parlamentar/{{ m.id }}">{{ m.name }}</a> <span class="small-text muted">{{ m.chamber|role }}{% if m.party %}, {{ m.party }}{% endif %}</span></p>{% else %}<p class="muted">–</p>{% endfor %}
+    <h6>Proiecte ({{ results.bills|length }})</h6>
+    {% for b in results.bills %}<p><a class="link" href="/lege/{{ b.id }}">{{ b.number }}</a> {{ b.title }}</p>{% else %}<p class="muted">–</p>{% endfor %}
+  </div>
+  <div class="s12 l6">
+    <h6>Voturi ({{ results.votes|length }})</h6>
+    {% for v in results.votes %}<p><a class="link" href="/vot/{{ v.id }}">{{ v.description }}</a> <span class="small-text muted">{{ v.voted_at|date_ro }}</span></p>{% else %}<p class="muted">–</p>{% endfor %}
+    <h6>Luări de cuvânt ({{ results.speeches|length }})</h6>
+    {% for s in results.speeches %}<p><a class="link" href="/parlamentar/{{ s.member_id }}">{{ s.name }}</a>: {% if s.url %}<a class="link" href="{{ s.url }}" rel="noopener">{{ s.topic }}</a>{% else %}{{ s.topic }}{% endif %} <span class="small-text muted">{{ s.sitting_on|date_ro }}</span></p>{% else %}<p class="muted">–</p>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "macros.html" import stage_chip %}
+{% block title %}Ordonanțe, CCR și adoptări tacite{% endblock %}
+{% block content %}
+<h4 class="page-title">Guvernul legiferează prin ordonanțe</h4>
+<p class="muted prose">Guvernul poate emite ordonanțe (OG, în baza unei legi de abilitare) și ordonanțe de urgență (OUG), care intră în vigoare înainte ca Parlamentul să le dezbată. Parlamentul le aprobă sau le respinge ulterior prin lege. Lista de mai jos e construită din proiectele de lege de aprobare/respingere colectate.</p>
+<div class="grid">
+  <div class="s6 m3 stat"><div class="value">{{ stats.total or 0 }}</div><div class="label">proiecte de aprobare/respingere</div></div>
+  <div class="s6 m3 stat"><div class="value">{{ stats.emergency or 0 }}</div><div class="label">privind ordonanțe de urgență</div></div>
+  <div class="s6 m3 stat"><div class="value">{{ stats.pending or 0 }}</div><div class="label">încă în dezbatere</div></div>
+  <div class="s6 m3 stat"><div class="value">{{ stats.avg_days|int if stats.avg_days is not none else '–' }}</div><div class="label">zile în medie până la lege (de la înregistrarea la Cameră)</div></div>
+</div>
+<div class="table-wrap"><table class="data"><thead><tr><th>Ordonanța</th><th>Proiect</th><th>Stadiu</th><th class="num">Zile</th></tr></thead>
+<tbody>{% for b in bills %}<tr><td style="white-space:nowrap">{{ b.ordinance }}</td><td><a href="/lege/{{ b.id }}">{{ b.title }}</a></td><td>{{ stage_chip(b.stage) }}</td><td class="num">{{ b.days_to_law if b.days_to_law is not none else '–' }}</td></tr>
+{% else %}<tr><td colspan="4">–</td></tr>{% endfor %}</tbody></table></div>
+
+<h5 class="section-label">Curtea Constituțională</h5>
+<p class="muted prose">Etape din parcursul proiectelor care menționează Curtea Constituțională (sesizări, decizii).</p>
+{% for e in ccr %}<p><span class="small-text muted">{{ e.event_date|date_ro }}</span> <a class="link" href="/lege/{{ e.bill_id }}">{{ e.number }}</a> – {{ e.action }}</p>{% else %}<p class="muted">Nicio mențiune în proiectele colectate.</p>{% endfor %}
+
+<h5 class="section-label">Adoptări tacite</h5>
+<p class="muted prose">Dacă prima cameră sesizată nu se pronunță în termenul constituțional (45 de zile, 60 pentru coduri), proiectul se consideră adoptat tacit (art. 75 alin. (2) din Constituție).</p>
+{% for e in tacit %}<p><span class="small-text muted">{{ e.event_date|date_ro }}</span> <a class="link" href="/lege/{{ e.id }}">{{ e.number }}</a> – {{ e.title }}</p>{% else %}<p class="muted">Nicio adoptare tacită în proiectele colectate.</p>{% endfor %}
+{% endblock %}

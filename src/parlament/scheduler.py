@@ -1,0 +1,74 @@
+"""Periodic collection in one process (no daemon framework): a loop that runs due jobs and sleeps.
+
+Jobs and cadence (Bucharest time):
+- every weekday at 21:00: today's votes, the current agenda, and refresh of bills still in debate (last 30 days)
+- every Sunday at 03:00: all MP profiles and activity lists, open-data CSV export
+"""
+
+import datetime as dt
+import logging
+import time
+import traceback
+
+from parlament import db, exports
+from parlament.config import settings
+from parlament.fetch import Fetcher
+from parlament.ingest import cdep_activity, cdep_agenda, cdep_bills, cdep_members, cdep_votes, senat_members
+
+log = logging.getLogger("parlament.scheduler")
+
+
+def daily(conn, fetcher) -> None:
+    today = dt.date.today()
+    cdep_votes.ingest_days(conn, fetcher, cdep_votes.sitting_days(today - dt.timedelta(days=3), today))
+    _, idps = cdep_agenda.ingest(conn, fetcher, [None])
+    pending = [
+        row["source_id"]
+        for row in conn.execute(
+            """SELECT source_id FROM bills WHERE law IS NULL AND last_event_on > current_date - 30
+               ORDER BY last_event_on DESC"""
+        )
+    ]
+    cdep_bills.ingest(conn, fetcher, sorted(set(idps) | set(pending)))
+    cdep_bills.relink(conn)
+
+
+def weekly(conn, fetcher) -> None:
+    leg = settings().legislature
+    cdep_members.ingest(conn, fetcher, leg)
+    senat_members.ingest(conn, fetcher, leg)
+    _, idps = cdep_activity.ingest(conn, fetcher, leg)
+    cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=30)
+    cdep_bills.relink(conn)
+    exports.write_all(conn)
+
+
+def due(now: dt.datetime, last: dict[str, dt.date]) -> list[str]:
+    jobs = []
+    if now.weekday() < 5 and now.hour >= 21 and last.get("daily") != now.date():
+        jobs.append("daily")
+    if now.weekday() == 6 and now.hour >= 3 and last.get("weekly") != now.date():
+        jobs.append("weekly")
+    return jobs
+
+
+def run(once: bool = False) -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    with db.connect() as conn:
+        db.migrate(conn)
+    last: dict[str, dt.date] = {}
+    while True:
+        now = dt.datetime.now()
+        jobs = ["daily", "weekly"] if once else due(now, last)
+        for job in jobs:
+            log.info("start %s", job)
+            try:
+                with db.connect() as conn, Fetcher() as fetcher:
+                    {"daily": daily, "weekly": weekly}[job](conn, fetcher)
+                log.info("done %s", job)
+            except Exception:  # keep the loop alive; the failure is logged and in ingest_log
+                log.error("job %s failed:\n%s", job, traceback.format_exc())
+            last[job] = now.date()
+        if once:
+            return
+        time.sleep(600)

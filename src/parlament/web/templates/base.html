@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Parlamentul pe înțelesul tuturor{% endblock %}</title>
+  <meta name="description" content="{% block description %}Cine sunt deputații și senatorii, ce legi propun, cum votează și cât de des sunt prezenți. Date oficiale de pe cdep.ro și senat.ro.{% endblock %}">
+  <link rel="stylesheet" href="{{ asset('vendor/beer.min.css') }}">
+  <link rel="stylesheet" href="{{ asset('app.css') }}">
+  <link rel="alternate" type="application/rss+xml" title="Proiecte legislative" href="/feed/proiecte.xml">
+  <link rel="icon" href="/static/avatar.svg">
+  {% block head %}{% endblock %}
+</head>
+<body class="light">
+{% set nav = [
+  ("/", "home", "Acasă"),
+  ("/parlamentari", "groups", "Parlamentari"),
+  ("/legi", "gavel", "Legi"),
+  ("/voturi", "how_to_vote", "Voturi"),
+  ("/ordinea-de-zi", "event_note", "Ordinea de zi"),
+  ("/traseism", "swap_horiz", "Traseism"),
+  ("/ordonante", "bolt", "Ordonanțe"),
+  ("/invata", "school", "Învață"),
+] %}
+{% set path = request.url.path %}
+<nav class="left m l">
+  <header><img src="/static/avatar.svg" alt="" class="circle"></header>
+  {% for href, icon, label in nav %}
+  <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}"><i>{{ icon }}</i><div>{{ label }}</div></a>
+  {% endfor %}
+</nav>
+<nav class="bottom s">
+  {% for href, icon, label in nav[:5] %}
+  <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}"><i>{{ icon }}</i></a>
+  {% endfor %}
+</nav>
+<header class="fixed primary-container">
+  <nav>
+    <a href="/" class="max"><h6 class="small">Parlamentul pe înțelesul tuturor</h6></a>
+    <form action="/cauta" method="get" class="field prefix round small border no-margin hide-s" role="search">
+      <i>search</i>
+      <input type="search" name="q" placeholder="Caută parlamentari, legi, voturi" aria-label="Caută" value="{{ q if q is defined else '' }}">
+    </form>
+    <a href="/cauta" class="button circle transparent s" aria-label="Caută"><i>search</i></a>
+  </nav>
+</header>
+<main class="responsive">
+  {% block content %}{% endblock %}
+  <div class="large-space"></div>
+  <footer class="small-text muted">
+    <div class="divider"></div>
+    <p>Date oficiale preluate automat de pe <a class="link" href="https://www.cdep.ro">cdep.ro</a> și <a class="link" href="https://www.senat.ro">senat.ro</a>.
+    Fiecare pagină trimite la sursa oficială. Proiect independent, fără legătură cu Parlamentul României.
+    <a class="link" href="/metodologie">Metodologie</a> · <a class="link" href="/date-deschise">Date deschise și API</a> · <a class="link" href="https://github.com/dmdafsm/parlament">Cod sursă</a></p>
+  </footer>
+</main>
+<script src="{{ asset('vendor/beer.min.js') }}" type="module"></script>
+<script src="{{ asset('vendor/htmx.min.js') }}"></script>
+<script src="{{ asset('app.js') }}"></script>
+</body>
+</html>

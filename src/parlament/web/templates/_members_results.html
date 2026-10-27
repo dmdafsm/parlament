@@ -1,0 +1,26 @@
+{% from "macros.html" import bar %}
+<p class="small-text muted">{{ total }} parlamentari{% if params.grup %} din grupul {{ params.grup }}{% endif %}.
+{% if medians %}Mediane: {% for ch, med in medians.items() %}{{ ch|chamber }} – prezență {{ med.attendance|pct }}, {{ med.speeches|round|int if med.speeches is not none else "–" }} luări de cuvânt{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+<a class="link" href="/metodologie#indicatori">Cum calculăm?</a></p>
+{% for label, rows in sections %}
+{% if label %}<h6 class="section-label">{{ label }} <span class="badge none">{{ rows|length }}</span></h6>{% endif %}
+<div class="table-wrap">
+<table class="data">
+  <thead><tr><th>Parlamentar</th><th class="hide-s">Grup</th><th class="hide-s">Circumscripție</th><th>Prezență la vot</th><th class="num">Luări de cuvânt</th><th class="num hide-s">Inițiative</th><th class="num hide-s">Întrebări</th><th class="hide-s">Vot cu grupul</th></tr></thead>
+  <tbody>
+  {% for m in rows %}
+  <tr>
+    <td><a href="/parlamentar/{{ m.id }}" class="row no-space"><img class="avatar" src="/foto/{{ m.id }}" alt="" loading="lazy" referrerpolicy="no-referrer"><span class="small-padding"><span class="bold">{{ m.name }}</span><br><span class="small-text muted">{{ m.chamber|role }}{% if not m.in_office %} · mandat încetat{% endif %}{% if m.group_changes or m.party_changes %} · <i class="small">swap_horiz</i>{% endif %}</span></span></a></td>
+    <td class="hide-s">{% if m.group_short %}<a class="link" href="/parlamentari?grup={{ m.group_short|urlencode }}">{{ m.group_short }}</a>{% else %}–{% endif %}</td>
+    <td class="hide-s">{{ m.constituency or ('Minorități' if m.minority_org else '–') }}</td>
+    <td style="min-width:9rem">{{ bar(m.attendance, warn=(m.attendance is not none and m.attendance < 0.7)) }}</td>
+    <td class="num">{{ m.speeches|number }}</td>
+    <td class="num hide-s">{{ m.bills|number }}</td>
+    <td class="num hide-s">{{ m.questions|number }}</td>
+    <td class="hide-s" style="min-width:8rem">{{ bar(m.loyalty) }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p>Niciun rezultat.</p>{% endfor %}

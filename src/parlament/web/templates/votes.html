@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Voturi în plen{% endblock %}
+{% block content %}
+<h4 class="page-title">Voturi în plen</h4>
+<p class="muted">Voturile electronice ale Camerei Deputaților, cu rezultatul nominal. Senatul nu publică încă votul nominal într-o formă pe care o putem prelua; vezi <a class="link" href="/metodologie">metodologia</a>.</p>
+<form action="/voturi" method="get" hx-get="/voturi" hx-target="#results" hx-push-url="true" hx-trigger="input from:#q delay:500ms, submit">
+  <div class="field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Caută în subiectul votului</label></div>
+</form>
+<div id="results">{% include "_votes_results.html" %}</div>
+{% endblock %}

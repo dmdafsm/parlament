@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import split, stage_chip %}
+{% block content %}
+<h4 class="page-title">Ce face Parlamentul României</h4>
+<p class="muted">Cine sunt cei {{ counts.deputies }} deputați și {{ counts.senators }} senatori, ce legi propun, cum votează și cât de des sunt prezenți.
+{% if updated %}Actualizat la {{ updated|date_ro(true) }}.{% endif %}</p>
+
+<div class="grid">
+  <article class="s12 m6 l4 round">
+    <h6><i>person_search</i> Cine mă reprezintă?</h6>
+    <form action="/parlamentari" method="get" data-autosubmit>
+      <input type="hidden" name="grupare" value="camera">
+      <div class="field label suffix border">
+        <select name="judet" id="judet">
+          <option value=""></option>
+          {% for c in constituencies %}<option value="{{ c.no }}">{{ c.no }}. {{ c.name }}</option>{% endfor %}
+        </select>
+        <label for="judet">Alege județul sau Diaspora</label>
+        <i>arrow_drop_down</i>
+      </div>
+      <noscript><button>Arată</button></noscript>
+    </form>
+    <p class="small-text muted">Fiecare circumscripție (cele 41 de județe, București și Diaspora) alege deputați și senatori. Minoritățile naționale au câte un deputat ales la nivel național.</p>
+  </article>
+  <article class="s12 m6 l8 round">
+    <div class="grid">
+      <a class="s6 l3 stat" href="/parlamentari?camera=cd"><div class="value">{{ counts.deputies }}</div><div class="label">deputați în funcție</div></a>
+      <a class="s6 l3 stat" href="/parlamentari?camera=senat"><div class="value">{{ counts.senators }}</div><div class="label">senatori în funcție</div></a>
+      <a class="s6 l3 stat" href="/legi"><div class="value">{{ counts.bills|number }}</div><div class="label">proiecte urmărite</div></a>
+      <a class="s6 l3 stat" href="/voturi"><div class="value">{{ counts.votes|number }}</div><div class="label">voturi în plen</div></a>
+    </div>
+    <nav class="wrap">
+      <a class="chip" href="/parlamentari?sort=prezenta"><i>event_available</i><span>Cei mai prezenți</span></a>
+      <a class="chip" href="/parlamentari?sort=absente"><i>event_busy</i><span>Cele mai multe absențe</span></a>
+      <a class="chip" href="/parlamentari?sort=initiative"><i>edit_document</i><span>Cele mai multe inițiative</span></a>
+      <a class="chip" href="/parlamentari?sort=loialitate&camera=cd"><i>call_split</i><span>Votează diferit de grup</span></a>
+      <a class="chip" href="/traseism"><i>swap_horiz</i><span>Au schimbat partidul</span></a>
+    </nav>
+  </article>
+</div>
+
+<div class="grid">
+  <div class="s12 l6">
+    <h6 class="section-label">Ultimele voturi <a class="small-text link" href="/voturi">toate</a></h6>
+    {% for v in votes %}
+    <a class="row padding surface-container-low round small-margin" href="/vot/{{ v.id }}">
+      <div class="max"><div class="small-text muted">{{ v.voted_at|date_ro(true) }}</div><div>{{ v.description }}</div>{{ split(v) }}</div>
+    </a>
+    {% else %}<p class="muted">Încă nu sunt voturi colectate.</p>{% endfor %}
+  </div>
+  <div class="s12 l6">
+    <h6 class="section-label">Proiecte în mișcare <a class="small-text link" href="/legi">toate</a></h6>
+    {% for b in bills %}
+    <a class="row padding surface-container-low round small-margin" href="/lege/{{ b.id }}">
+      <div class="max"><div class="small-text muted">{{ b.number }} · {{ b.last_event_on|date_ro }}</div><div>{{ b.title }}</div></div>
+      {{ stage_chip(b.stage) }}
+    </a>
+    {% else %}<p class="muted">Încă nu sunt proiecte colectate.</p>{% endfor %}
+    {% if agenda %}
+    <h6 class="section-label">Ordinea de zi</h6>
+    <a class="row padding primary-container round" href="/ordinea-de-zi?id={{ agenda.id }}"><i>event_note</i><div class="max">{{ agenda.title }}</div><i>chevron_right</i></a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
