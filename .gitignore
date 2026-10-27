@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# data
+data/
+
+# macOS
+.DS_Store
+
+# local research, task notes and raw source files; never committed
+.research/
+# generated local output (reviews, reports)
+.artifacts/
+.env
+.env.*
+!.env.example
+# tool caches
+.ruff_cache/
+.pytest_cache/

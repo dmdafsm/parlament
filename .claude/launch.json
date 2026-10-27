@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "parlament",
+        "serve",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
+    }
+  ]
+}

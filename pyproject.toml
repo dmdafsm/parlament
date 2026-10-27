@@ -1,0 +1,55 @@
+[project]
+name = "parlament"
+version = "0.1.0"
+description = "Open-source portal that makes the activity of the Romanian Parliament easy to follow"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "pillow>=11",
+    "psycopg-pool>=3.2",
+    "psycopg[binary]>=3.3.6",
+    "selectolax>=1.0.2",
+    "typer>=0.27.3",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+parlament = "parlament.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, bugbear, pyupgrade, simplify, ruff-specific
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # Romanian text uses typographic characters on purpose
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/tests/*" = ["E402"]  # sys.path insertion before importing the scripts under test
+"src/parlament/web/learn.py" = ["E501"]  # prose content
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument", "fastapi.Query", "fastapi.Depends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

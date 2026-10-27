@@ -1,0 +1,58 @@
+# Local run of the whole stack (ADR 0004):
+#   cp .env.example .env && docker compose up -d --build
+#   docker compose run --rm ingest parlament ingest all     # first full collection
+#   docker compose logs -f ingest                           # scheduled runs
+# The site is on http://127.0.0.1:8000; put a TLS reverse proxy (Caddy, see deploy/Caddyfile) in front for production.
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: parlament
+      POSTGRES_USER: parlament
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parlament}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parlament -d parlament"]
+      interval: 5s
+      retries: 10
+
+  ingest:
+    build:
+      context: .
+      target: app
+    image: parlament:local
+    restart: unless-stopped
+    init: true
+    command: ["parlament", "schedule"]
+    environment:
+      DATABASE_URL: postgresql://parlament:${POSTGRES_PASSWORD:-parlament}@db:5432/parlament
+      PARLAMENT_FETCH_MODE: ${PARLAMENT_FETCH_MODE:-live}
+    volumes:
+      - ./data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: app
+    image: parlament:local
+    restart: unless-stopped
+    init: true
+    command: ["parlament", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql://parlament:${POSTGRES_PASSWORD:-parlament}@db:5432/parlament
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
