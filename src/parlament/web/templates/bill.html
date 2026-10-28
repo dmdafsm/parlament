@@ -13,6 +13,11 @@
   {% if b.urgent %}<span class="chip"><i>timer</i><span>procedură de urgență</span></span>{% endif %}
   {% if b.character %}<span class="chip"><span>lege {{ b.character }}</span></span>{% endif %}
 </nav>
+{% if summary %}<article class="round summary">
+  <h6><i>auto_awesome</i> Pe înțelesul tuturor</h6>
+  <p>{{ summary.summary }}</p>
+  <p class="small-text muted no-margin">Rezumat generat automat de un model de limbaj ({{ summary.model }}, licență CC BY-NC 4.0) din <a class="link" href="{{ summary.source_url }}" rel="noopener">expunerea de motive</a> a inițiatorului. Poate conține erori și prezintă proiectul așa cum îl descrie inițiatorul; textul oficial este cel care contează. <a class="link" href="/metodologie#rezumate">Cum sunt făcute</a></p>
+</article>{% endif %}
 
 <div class="grid">
   <article class="s12 l5 round">

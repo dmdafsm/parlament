@@ -1,10 +1,13 @@
 """Shared helpers for parsing Romanian parliamentary pages."""
 
 import datetime as dt
+import io
 import re
 import unicodedata
 from urllib.parse import parse_qs, urlsplit
 
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 from selectolax.lexbor import LexborNode as Node
 
@@ -88,3 +91,11 @@ def form_fields(page: str, leave_out: tuple[str, ...] = ()) -> dict[str, str]:
     if "__VIEWSTATE" not in fields:
         raise ParseError("no ASP.NET form state on the page")
     return fields
+
+
+def pdf_text(content: bytes) -> str:
+    """Text layer of a PDF (empty for scanned documents)."""
+    try:
+        return "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(content)).pages)
+    except (PdfReadError, ValueError) as error:
+        raise ParseError(f"unreadable PDF ({error})") from error

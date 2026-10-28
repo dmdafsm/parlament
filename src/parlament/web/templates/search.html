@@ -19,9 +19,9 @@
   </div>
   <div class="s12">
     <h6>Ce s-a spus în plen ({{ results.texts|length }})</h6>
-    <p class="small-text muted">Din stenogramele Camerei Deputaților, pentru luările de cuvânt colectate.</p>
+    <p class="small-text muted">Din stenogramele Camerei Deputaților (luările de cuvânt ale deputaților) și ale Senatului (toate ședințele de plen).</p>
     {% for t in results.texts %}<article class="no-elevate border small-padding">
-      <div class="small-text">{% if t.member_id %}<a class="link" href="/parlamentar/{{ t.member_id }}">{{ t.speaker }}</a>{% else %}{{ t.speaker }}{% endif %} · <span class="muted">{{ t.sitting_on|date_ro }}{% if t.title %} · {{ t.title }}{% endif %}</span></div>
+      <div class="small-text">{% if t.member_id %}<a class="link" href="/parlamentar/{{ t.member_id }}">{{ t.speaker }}</a>{% else %}{{ t.speaker }}{% endif %} · <span class="muted">{{ "Senat" if t.chamber == "senat" else "Camera Deputaților" }}, {{ t.sitting_on|date_ro }}{% if t.title %} · {{ t.title }}{% endif %}</span></div>
       <p class="no-margin">{% for text, hit in t.snippet %}{% if hit %}<mark>{{ text }}</mark>{% else %}{{ text }}{% endif %}{% endfor %}</p>
       <a class="link small-text" href="{{ t.url }}" rel="noopener">Stenograma oficială</a>
     </article>{% else %}<p class="muted">–</p>{% endfor %}

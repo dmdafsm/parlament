@@ -21,6 +21,10 @@ class Settings:
     on_block: str = "stop"  # "stop" the run at a bot check, or "skip": record the page, pause, go on
     block_cooldown: float = 600.0  # seconds to pause after a bot check in "skip" mode
     block_limit: int = 3  # consecutive bot checks after which even "skip" mode stops
+    # Local language model for plain-language summaries (OpenAI-compatible endpoint, ADR 0006).
+    llm_url: str = "http://127.0.0.1:8091/v1"
+    llm_model: str = "default_model"  # name sent to the server; mlx_lm.server answers with the model it loaded
+    llm_label: str = "RoGemma3-4B-Instruct (OpenLLM-Ro)"  # shown next to each summary
 
 
 def settings() -> Settings:
@@ -37,4 +41,7 @@ def settings() -> Settings:
         on_block=os.environ.get("PARLAMENT_ON_BLOCK", "stop"),
         block_cooldown=float(os.environ.get("PARLAMENT_BLOCK_COOLDOWN", "600")),
         block_limit=int(os.environ.get("PARLAMENT_BLOCK_LIMIT", "3")),
+        llm_url=os.environ.get("PARLAMENT_LLM_URL", "http://127.0.0.1:8091/v1"),
+        llm_model=os.environ.get("PARLAMENT_LLM_MODEL", "default_model"),
+        llm_label=os.environ.get("PARLAMENT_LLM_LABEL", "RoGemma3-4B-Instruct (OpenLLM-Ro)"),
     )

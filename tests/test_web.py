@@ -1,7 +1,11 @@
+import datetime as dt
+
 import pytest
 from fastapi.testclient import TestClient
 
 from parlament import db
+from parlament.ingest import cdep_members
+from parlament.ingest.cdep_members import ListedDeputy, Profile
 from tests.seed import seed
 
 
@@ -113,3 +117,34 @@ def test_senate_pages(client):
     assert "Spitalul Exemplu" in deputy and "None" not in deputy
     agenda = client.get("/ordinea-de-zi?camera=senat").text
     assert "Ordinea de zi a Ședinței Senatului din 24 iunie 2025" in agenda and "/lege/senat-901" in agenda
+
+
+def test_bill_summary(client, database_url):
+    with db.connect(database_url) as conn:
+        conn.execute(
+            "INSERT INTO bill_summaries (bill_id, summary, model, source_url) VALUES"
+            " ('senat-901', 'Proiectul propune un exemplu.', 'Model de test', 'https://example.invalid/em.pdf')"
+        )
+        conn.commit()
+    page = client.get("/lege/senat-901").text
+    assert "Pe înțelesul tuturor" in page and "Proiectul propune un exemplu." in page
+    assert "Model de test" in page and 'href="https://example.invalid/em.pdf"' in page
+    assert "Pe înțelesul tuturor" not in client.get("/lege/cd-22001").text
+
+
+def test_previous_legislature(client, database_url):
+    with db.connect(database_url) as conn, conn.transaction():
+        # The same person as deputy 3 (Cernat Vlad), in the 2020 legislature under another id.
+        profile = Profile(name="Cernat Vlad", validated_on=dt.date(2020, 12, 21))
+        profile.groups = [{"group_source_id": "9", "group_name": "Grupul vechi", "start": None, "end": None}]
+        cdep_members.store_deputy(
+            conn, 2020, ListedDeputy("77", "Cernat Vlad", 1, "Alba", "9", "Grupul vechi"), profile, "https://e.invalid"
+        )
+    page = client.get("/parlamentari?legislatura=2020").text
+    assert "Legislatura 2020–2024" in page and "Legislatură încheiată" in page
+    assert "/parlamentar/cd-2020-77" in page and "/parlamentar/cd-2024-3" not in page
+    # An unknown legislature falls back to the current one.
+    assert "Legislatura 2024–2028" in client.get("/parlamentari?legislatura=1990").text
+    old = client.get("/parlamentar/cd-2020-77").text
+    assert "în legislatura 2020–2024" in old and 'href="/parlamentar/cd-2024-3"' in old
+    assert 'href="/parlamentar/cd-2020-77"' in client.get("/parlamentar/cd-2024-3").text
