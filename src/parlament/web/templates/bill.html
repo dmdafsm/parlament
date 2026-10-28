@@ -19,18 +19,19 @@
     <h6>Pe scurt</h6>
     <table class="data small-text"><tbody>
       <tr><th>Stadiu</th><td>{{ b.status or '–' }}</td></tr>
-      <tr><th>Camera decizională</th><td>{{ b.decisional_chamber or '–' }}</td></tr>
-      <tr><th>Înregistrat la Cameră</th><td>{{ b.cd_number or '–' }}</td></tr>
-      {% if b.senate_number %}<tr><th>Senat</th><td>{% if b.senate_url %}<a class="link" href="{{ b.senate_url }}" rel="noopener">{{ b.senate_number }}</a>{% else %}{{ b.senate_number }}{% endif %}</td></tr>{% endif %}
+      {% if b.decisional_chamber %}<tr><th>Camera decizională</th><td>{{ b.decisional_chamber }}</td></tr>{% endif %}
+      {% if b.procedure and b.chamber == 'senat' %}<tr><th>Procedură</th><td>{{ b.procedure }}</td></tr>{% endif %}
+      <tr><th>Înregistrat la Cameră</th><td>{% if other and other.chamber == 'cd' %}<a class="link" href="/lege/{{ other.id }}">{{ b.cd_number or other.number }}</a>{% else %}{{ b.cd_number or '–' }}{% endif %}</td></tr>
+      {% if b.senate_number %}<tr><th>Senat</th><td>{% if b.senate_url %}<a class="link" href="{{ b.senate_url }}" rel="noopener">{{ b.senate_number }}</a>{% else %}{{ b.senate_number }}{% endif %}{% if senate and b.chamber == 'cd' %} · <span class="small-text">{{ senate.status or '' }}</span>{% endif %}</td></tr>{% endif %}
       {% if b.bpi_number %}<tr><th>Biroul permanent</th><td>{{ b.bpi_number }}</td></tr>{% endif %}
       <tr><th>Ultima etapă</th><td>{{ b.last_event_on|date_ro }}</td></tr>
-      {% if b.law and b.registered_on and b.last_event_on %}<tr><th>Durată până la lege</th><td>{{ (b.last_event_on - b.registered_on).days }} zile de la înregistrarea la Cameră</td></tr>{% endif %}
+      {% if b.law and b.registered_on and b.last_event_on %}<tr><th>Durată până la lege</th><td>{{ (b.last_event_on - b.registered_on).days }} zile de la înregistrarea {{ 'la Cameră' if b.chamber == 'cd' else 'la Senat' }}</td></tr>{% endif %}
     </tbody></table>
     <h6>Inițiatori</h6>
     <p class="small-text">{{ b.initiator_summary or '' }}</p>
     {% set labels = initiators|groupby('label') %}
     {% for label, people in labels %}
-    <div class="small-text"><span class="muted">{{ label or '' }}:</span>
+    <div class="small-text">{% if label %}<span class="muted">{{ label }}:</span>{% endif %}
       {% for p in people %}{% if p.member_id %}<a class="link" href="/parlamentar/{{ p.member_id }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</div>
     {% endfor %}
     {% if documents %}<h6>Documente</h6>
@@ -42,13 +43,20 @@
   </article>
   <div class="s12 l7">
     {% if votes %}<h6>Voturi în plen</h6>
-      {% for v in votes %}<a class="padding surface-container-low round small-margin block" href="/vot/{{ v.id }}" style="display:block"><div class="small-text muted">{{ v.voted_at|date_ro(true) }}</div>{{ v.description }}{{ split(v) }}<div class="small-text">Pentru {{ v.yes }} · Contra {{ v.no }} · Abțineri {{ v.abstain }}</div></a>{% endfor %}{% endif %}
+      {% for v in votes %}<a class="padding surface-container-low round small-margin block" href="/vot/{{ v.id }}" style="display:block"><div class="small-text muted">{{ v.chamber|chamber }} · {{ v.voted_at|date_ro(true) }}{% if v.result %} · {{ v.result }}{% endif %}</div>{{ v.description }}{{ split(v) }}<div class="small-text">Pentru {{ v.yes }} · Contra {{ v.no }} · Abțineri {{ v.abstain }}</div></a>{% endfor %}{% endif %}
     <h6>Parcursul legislativ</h6>
     <ul class="timeline">
       {% for e in events %}<li><div class="when">{{ e.event_date|date_ro }}{% if e.chamber and e.chamber != 'CD' %} · {{ e.chamber }}{% endif %}</div>{{ e.action }}{% if e.notes %}<div class="small-text muted">{{ e.notes }}</div>{% endif %}
         {% for doc in e.documents %}<a class="chip small" href="{{ doc.url }}" rel="noopener"><i>picture_as_pdf</i><span>{{ doc.title[:40] }}</span></a>{% endfor %}</li>
       {% else %}<li>Fără etape publicate.</li>{% endfor %}
     </ul>
+    {% if senate_events %}<h6>Parcursul la Senat <a class="small-text link" href="/lege/{{ senate.id }}">fișa Senatului</a></h6>
+    <details><summary class="small-text">{{ senate_events|length }} etape publicate de senat.ro</summary>
+    <ul class="timeline">
+      {% for e in senate_events %}<li><div class="when">{{ e.event_date|date_ro }}</div>{{ e.action }}
+        {% for doc in e.documents %}<a class="chip small" href="{{ doc.url }}" rel="noopener"><i>picture_as_pdf</i><span>{{ doc.title[:40] }}</span></a>{% endfor %}</li>{% endfor %}
+    </ul></details>{% endif %}
+    {% if other and b.chamber == 'senat' and other.chamber == 'cd' %}<p class="small-text muted">Proiectul a ajuns și la Camera Deputaților: <a class="link" href="/lege/{{ other.id }}">fișa completă ({{ other.number }})</a>.</p>{% endif %}
     {% if agenda %}<h6>Pe ordinea de zi</h6>{% for a in agenda %}<p><a class="link" href="/ordinea-de-zi?id={{ a.id }}">{{ a.title }}</a>{% if a.position %} – punctul {{ a.position }}{% endif %}</p>{% endfor %}{% endif %}
   </div>
 </div>

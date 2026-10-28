@@ -20,6 +20,7 @@ table.data tr:hover td { background: var(--surface-container-low, #f5f5f5); }
 table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .table-wrap { overflow-x: auto; }
 table.data td:first-child { min-width: 13rem; }
+table.data td.num:first-child { min-width: 0; }
 table.data td a.row { white-space: normal; align-items: center; }
 .avatar { width: 2.5rem; height: 2.5rem; border-radius: 50%; object-fit: cover; background: var(--surface-container); }
 .portrait { width: 9rem; height: 11rem; border-radius: 1rem; object-fit: cover; background: var(--surface-container); }
@@ -50,3 +51,6 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
 .htmx-request .loading-hint, .htmx-request.loading-hint { opacity: 1; }
 .loading-hint { opacity: 0; transition: opacity 0.2s; }
 @media (max-width: 600px) { .hide-s { display: none; } .portrait { width: 6rem; height: 7.5rem; } }
+
+/* Biographies keep the line breaks the chamber published. */
+.cv-text { white-space: pre-line; }

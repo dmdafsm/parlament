@@ -2,8 +2,8 @@
 <div class="table-wrap"><table class="data">
   <thead><tr><th>Data</th><th>Subiect</th><th>Rezultat</th><th class="num hide-s">Prezenți</th></tr></thead>
   <tbody>{% for v in votes %}
-  <tr><td style="white-space:nowrap">{{ v.voted_at|date_ro(true) }}</td><td><a href="/vot/{{ v.id }}">{{ v.description }}</a></td>
+  <tr><td style="white-space:nowrap">{{ v.voted_at|date_ro(true) }}</td><td><span class="small-text muted">{{ v.chamber|chamber }}</span><br><a href="/vot/{{ v.id }}">{{ v.description }}</a></td>
       <td style="min-width:10rem">{{ split(v) }}<span class="small-text">{{ v.yes }} / {{ v.no }} / {{ v.abstain }}</span></td><td class="num hide-s">{{ v.present }}</td></tr>
   {% else %}<tr><td colspan="4">Niciun vot.</td></tr>{% endfor %}</tbody>
 </table></div>
-{{ pager(page, votes|length == 50, "/voturi?q=" ~ (params.q|urlencode) ~ "&") }}
+{{ pager(page, votes|length == 50, "/voturi?q=" ~ (params.q|urlencode) ~ "&camera=" ~ (params.camera|urlencode) ~ "&") }}

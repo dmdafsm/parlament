@@ -274,19 +274,42 @@ def bill_page(request: Request, bill_id: str, conn: Connection = Depends(get_con
            WHERE i.bill_id = %s ORDER BY i.seq""",
         (bill_id,),
     ).fetchall()
+    # The same bill in the other chamber's records (matched by Senate number).
+    other = (
+        conn.execute(
+            "SELECT * FROM bills WHERE senate_key = %s AND chamber <> %s ORDER BY chamber LIMIT 1",
+            (bill["senate_key"], bill["chamber"]),
+        ).fetchone()
+        if bill["senate_key"]
+        else None
+    )
+    senate = other if bill["chamber"] == "cd" else bill
     return render(
         request,
         "bill.html",
         b=bill,
+        other=other,
         stage=analytics.bill_stage(bill),
         initiators=initiators,
         events=conn.execute("SELECT * FROM bill_events WHERE bill_id = %s ORDER BY seq", (bill_id,)).fetchall(),
+        senate_events=(
+            conn.execute("SELECT * FROM bill_events WHERE bill_id = %s ORDER BY seq", (senate["id"],)).fetchall()
+            if senate and bill["chamber"] == "cd"
+            else []
+        ),
+        senate=senate,
         documents=conn.execute("SELECT * FROM bill_documents WHERE bill_id = %s ORDER BY seq", (bill_id,)).fetchall(),
-        votes=conn.execute("SELECT * FROM votes WHERE bill_id = %s ORDER BY voted_at", (bill_id,)).fetchall(),
+        votes=conn.execute(
+            """SELECT * FROM votes WHERE bill_id = %s OR bill_id = %s OR (chamber = 'senat' AND bill_ref = %s)
+               ORDER BY voted_at, seq NULLS FIRST""",
+            (bill_id, other["id"] if other else None, bill["senate_key"]),
+        ).fetchall(),
         agenda=conn.execute(
-            """SELECT a.id, a.title, a.first_day, i.position FROM agenda_items i JOIN agendas a ON a.id = i.agenda_id
-               WHERE i.bill_id = %s ORDER BY a.first_day DESC NULLS LAST""",
-            (bill_id,),
+            """SELECT a.id, a.chamber, a.title, a.first_day, i.position
+               FROM agenda_items i JOIN agendas a ON a.id = i.agenda_id
+               WHERE i.bill_id = %s OR i.bill_id = %s OR (a.chamber = 'senat' AND i.bill_ref = %s)
+               ORDER BY a.first_day DESC NULLS LAST""",
+            (bill_id, other["id"] if other else None, bill["senate_key"]),
         ).fetchall(),
     )
 
@@ -295,15 +318,21 @@ def bill_page(request: Request, bill_id: str, conn: Connection = Depends(get_con
 def votes_page(
     request: Request,
     q: str = Query("", max_length=120),
+    camera: str = Query("", pattern="^(cd|senat)?$"),
     pagina: int = Query(1, ge=1, le=1000),
     conn: Connection = Depends(get_conn),
 ):
-    params = {"limit": 50, "offset": (pagina - 1) * 50, "q": analytics.ts_query(q) or "''"}
+    params = {"limit": 50, "offset": (pagina - 1) * 50, "q": analytics.ts_query(q) or "''", "chamber": camera}
     where = "NOT is_test" + (" AND search @@ to_tsquery('simple', %(q)s)" if q else "")
+    where += " AND chamber = %(chamber)s" if camera else ""
     rows = conn.execute(
-        f"SELECT * FROM votes WHERE {where} ORDER BY voted_at DESC LIMIT %(limit)s OFFSET %(offset)s", params
+        f"""SELECT * FROM votes WHERE {where}
+            ORDER BY voted_at DESC, seq DESC NULLS LAST LIMIT %(limit)s OFFSET %(offset)s""",
+        params,
     ).fetchall()
-    return render(request, "votes.html", partial="_votes_results.html", votes=rows, params={"q": q}, page=pagina)
+    return render(
+        request, "votes.html", partial="_votes_results.html", votes=rows, params={"q": q, "camera": camera}, page=pagina
+    )
 
 
 @app.get("/vot/{vote_id}", response_class=HTMLResponse)
@@ -348,9 +377,20 @@ def vote_page(request: Request, vote_id: str, conn: Connection = Depends(get_con
 
 
 @app.get("/ordinea-de-zi", response_class=HTMLResponse)
-def agenda_page(request: Request, id: str | None = Query(None, max_length=40), conn: Connection = Depends(get_conn)):
-    agendas = conn.execute("SELECT * FROM agendas ORDER BY first_day DESC NULLS LAST, id DESC LIMIT 30").fetchall()
+def agenda_page(
+    request: Request,
+    id: str | None = Query(None, max_length=60),
+    camera: str = Query("cd", pattern="^(cd|senat)$"),
+    conn: Connection = Depends(get_conn),
+):
+    if id and id.startswith("senat-"):
+        camera = "senat"
+    agendas = conn.execute(
+        "SELECT * FROM agendas WHERE chamber = %s ORDER BY first_day DESC NULLS LAST, id DESC LIMIT 30", (camera,)
+    ).fetchall()
     current = next((a for a in agendas if a["id"] == id), agendas[0] if agendas else None)
+    if id and current and current["id"] != id:
+        current = conn.execute("SELECT * FROM agendas WHERE id = %s", (id,)).fetchone() or current
     items = (
         conn.execute(
             """SELECT i.*, b.status, b.law FROM agenda_items i LEFT JOIN bills b ON b.id = i.bill_id
@@ -360,7 +400,7 @@ def agenda_page(request: Request, id: str | None = Query(None, max_length=40), c
         if current
         else []
     )
-    return render(request, "agenda.html", agendas=agendas, current=current, items=items)
+    return render(request, "agenda.html", agendas=agendas, current=current, items=items, camera=camera)
 
 
 @app.get("/cauta", response_class=HTMLResponse)
@@ -476,6 +516,7 @@ def api_member(member_id: str, conn: Connection = Depends(get_conn)):
         "SELECT * FROM party_memberships WHERE member_id = %s ORDER BY seq", (member_id,)
     ).fetchall()
     member["voturi_recente"] = analytics.member_votes(conn, member_id, limit=100)
+    member["cv"] = conn.execute("SELECT cv FROM members WHERE id = %s", (member_id,)).fetchone()["cv"]
     return member
 
 

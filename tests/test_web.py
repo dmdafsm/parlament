@@ -36,7 +36,11 @@ def client(database_url, monkeypatch):
         "/lege/cd-22001",
         "/voturi",
         "/vot/cd-40002",
+        "/voturi?camera=senat",
+        "/vot/senat-bbbbbbbb-0000-0000-0000-000000000001",
+        "/lege/senat-901",
         "/ordinea-de-zi",
+        "/ordinea-de-zi?camera=senat",
         "/cauta?q=Albescu",
         "/traseism",
         "/ordonante",
@@ -90,3 +94,20 @@ def test_not_found_and_validation(client):
 def test_empty_county_from_form_is_all(client):
     assert client.get("/parlamentari?judet=&camera=&sort=luari").status_code == 200
     assert client.get("/parlamentari?judet=44").status_code == 422
+
+
+def test_senate_pages(client):
+    vote = client.get("/vot/senat-bbbbbbbb-0000-0000-0000-000000000001").text
+    assert "Adoptat" in vote and "/lege/cd-22001" in vote
+    assert "24 iun. 2025" in vote and "24 iun. 2025, 00:00" not in vote  # the Senate publishes no time of day
+    bill = client.get("/lege/cd-22001").text
+    assert "Senat · 24 iun. 2025" in bill  # the Senate vote is listed on the Chamber's bill page
+    senate_only = client.get("/lege/senat-901").text
+    assert "Respins definitiv" in senate_only and "Prima cameră: Senat" in senate_only
+    profile = client.get("/parlamentar/senat-2024-aaaaaaaa-1111-2222-3333-444444444444").text
+    assert "Biografie (CV)" in profile and "Liceul Exemplu" in profile and "Tel.: 000" not in profile
+    deputy = client.get("/parlamentar/cd-2024-1").text
+    # Free-text CVs have no entry labels.
+    assert "Spitalul Exemplu" in deputy and "None" not in deputy
+    agenda = client.get("/ordinea-de-zi?camera=senat").text
+    assert "Ordinea de zi a Ședinței Senatului din 24 iunie 2025" in agenda and "/lege/senat-901" in agenda

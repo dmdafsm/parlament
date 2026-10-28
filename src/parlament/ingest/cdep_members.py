@@ -1,6 +1,7 @@
-"""Deputies from cdep.ro: list, profile, group/party history, committees and activity counters."""
+"""Deputies from cdep.ro: list, profile, group/party history, committees, activity counters and CV."""
 
 import datetime as dt
+import json
 import re
 from dataclasses import dataclass, field
 
@@ -49,6 +50,11 @@ def list_url(legislature: int) -> str:
 
 def profile_url(idm: str, legislature: int, chamber: str = "cd") -> str:
     return f"{SITE}/pls/parlam/structura2015.mp?idm={idm}&cam={CHAMBER_CODE[chamber]}&leg={legislature}"
+
+
+def cv_url(idm: str, legislature: int) -> str:
+    """The profile's "Curriculum Vitae" view."""
+    return f"{profile_url(idm, legislature)}&pag=0"
 
 
 def member_id(chamber: str, legislature: int, idm: str) -> str:
@@ -330,6 +336,114 @@ def _parse_stats(box) -> dict[str, tuple[int, str | None]]:
     return stats
 
 
+# Personal details of the CV that are not about the public role are not stored (ADR 0001).
+CV_SKIP_SECTIONS = ("informatii personale", "date personale", "date biografice", "date contact", "date de contact")
+CV_SKIP_LABELS = (
+    "data nasterii",
+    "cetatenie",
+    "nationalitate",
+    "gen",
+    "sex",
+    "e-mail",
+    "email",
+    "telefon",
+    "adresa",
+    "facebook",
+)
+CV_BAND = re.compile(r'<div id="bandaCV(?:2025)?">(.*?)</div[^>]*>', re.S)
+CV_TABLES = "table.cveuro2025, table.tbcveur2025"
+# Some CVs are one table whose section headings are rows ('<h3 class="maj">Experienţa profesională</h3>' and an
+# empty value cell); such a row is turned into a band so the sections split the same way.
+CV_HEADING_ROW = re.compile(
+    r'<tr>\s*<td class="colleft">\s*<h3 class="maj">(.*?)</h3>\s*</td>\s*<td[^>]*>\s*</td>\s*</tr>', re.S
+)
+
+
+def parse_cv(page: str) -> list[dict]:
+    """The CV view, as [{"section": ..., "entries": [{"label": ..., "text": ...}]}] like the Senate biography.
+
+    Deputies fill it in as Europass rows of label and value (two table styles and one of divs; one block per job
+    or school, 'Perioada' first) or as free paragraphs and lists. Sections are the cdep.ro bands
+    ('EXPERIENŢA PROFESIONALĂ', 'Studii şi specializări', ...).
+    An empty list means the deputy has no CV on the site (some publish only the PDF)."""
+    match = re.search(r'<div class="cv-content2025">(.*)', page, re.S)
+    if match is None:
+        return []
+    # The content runs until the page's own "Right content end" marker; the footer comes after it.
+    content = re.split(r'<!-- Right content end -->|<div id="footer"', match.group(1))[0]
+    content = CV_HEADING_ROW.sub(r'</table><div id="bandaCV">\1</div><table class="tbcveur2025">', content)
+    parts = CV_BAND.split(content)
+    sections = []
+    for title_html, body in zip(parts[1::2], parts[2::2], strict=True):
+        title = clean(html(f"<div>{title_html}</div>").css_first("div").text()).capitalize()
+        if not title or any(skip in fold(title) for skip in CV_SKIP_SECTIONS):
+            continue
+        tree = html(body)
+        tables = tree.css(CV_TABLES)
+        pairs = tree.css("div.cv-eu-pass-container2025")
+        if tables:
+            rows = [[node_text(c) for c in tr.iter() if c.tag == "td"] for t in tables for tr in t.css("tr")]
+            entries = _cv_rows(rows)
+        elif pairs:
+            entries = _cv_rows([[node_text(c) for c in pair.iter() if c.tag == "div"] for pair in pairs])
+        else:
+            entries = _cv_paragraphs(tree)
+        if entries:
+            sections.append({"section": title, "entries": entries})
+    return sections
+
+
+def _cv_rows(rows: list[list[str]]) -> list[dict]:
+    """Rows of cell texts: label first, then the value(s)."""
+    entries, block, header = [], [], []
+
+    def close():
+        if block and fold(block[0][0] or "").startswith("perioada"):
+            entries.append({"label": block[0][1], "text": "\n".join(value for _, value in block[1:])})
+        else:
+            entries.extend({"label": label, "text": value} for label, value in block)
+        block.clear()
+
+    for cells in rows:
+        if not cells:
+            continue
+        label = cells[0].rstrip(": ") or None
+        values = cells[1:]
+        if not label and not any(values):
+            close()
+        elif label and fold(label).startswith("perioada"):
+            close()
+            block.append((label, values[0] if values else ""))
+        elif len(cells) > 2:
+            # Language grid: a header row (no label) names the columns, then one row per language.
+            if not label:
+                header = values[1:]
+            else:
+                grades = ", ".join(
+                    f"{name.lower()} {grade}" for name, grade in zip(header, values[1:], strict=False) if grade
+                )
+                block.append((label, grades))
+        elif label and fold(label).startswith(CV_SKIP_LABELS):
+            continue
+        elif values and values[0]:
+            block.append((label, values[0]))
+    close()
+    return entries
+
+
+def _cv_paragraphs(tree) -> list[dict]:
+    lines = [node_text(node) for node in tree.css("p, li")]
+    text = "\n".join(line for line in lines if line and not fold(line).startswith(CV_SKIP_LABELS))
+    return [{"label": None, "text": text}] if text else []
+
+
+def store_cv(conn: psycopg.Connection, mid: str, sections: list[dict], url: str) -> None:
+    conn.execute(
+        "UPDATE members SET cv = %s, cv_url = %s WHERE id = %s",
+        (json.dumps(sections, ensure_ascii=False) if sections else None, url, mid),
+    )
+
+
 def display_name(sort_name: str) -> str:
     """cdep.ro list names are 'Surname Given'; profile headings are 'Given SURNAME'. Prefer the heading."""
     return sort_name
@@ -466,8 +580,15 @@ def ingest(conn: psycopg.Connection, fetcher: Fetcher, legislature: int, limit: 
                         "end": None,
                     }
                 ]
+        try:
+            cv = parse_cv(fetcher.get("cdep", cv_url(deputy.idm, legislature)))
+        except FetchError as error:
+            errors.append(str(error))
+            cv = None
         with conn.transaction():
-            store_deputy(conn, legislature, deputy, profile, url)
+            mid = store_deputy(conn, legislature, deputy, profile, url)
+            if cv is not None:
+                store_cv(conn, mid, cv, cv_url(deputy.idm, legislature))
         count += 1
     db.log_end(conn, log, "ok" if not errors else "partial", count, "\n".join(errors[:20]) or None)
     return count

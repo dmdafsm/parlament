@@ -10,8 +10,8 @@ import psycopg
 
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
-from parlament.ingest.cdep_members import Profile, store_history
-from parlament.parsing import ParseError, clean, html, node_text, parse_dotted_date, query_param
+from parlament.ingest.cdep_members import Profile, store_cv, store_history
+from parlament.parsing import ParseError, clean, fold, form_fields, html, node_text, parse_dotted_date, query_param
 
 BASE = "https://www.senat.ro"
 SOURCE = "senat.ro"
@@ -245,18 +245,78 @@ def group_short(name: str) -> str:
     return next((short for needle, short in GROUP_SHORT if needle.lower() in name.lower()), name)
 
 
+BIOGRAPHY = "ctl00$B_Center$Repeater14$ctl00$lnkBiog"
+# Personal details the Senate prints with the CV that are not about the public role, or are shown elsewhere.
+BIOGRAPHY_SKIP = ("nationalitate", "coordonate de contact")
+
+
+def parse_biography(page: str) -> list[dict]:
+    """The 'Biografie' view: sections (Experiență profesională, Educație și formare, ...) with labelled entries."""
+    table = html(page).css_first("table.biografie-table")
+    sections = []
+    for row in _rows(table) if table is not None else []:
+        cell = next((c for c in row.iter() if c.tag == "td"), None)
+        # css() matches the node itself too, so the label table is reached through the bold wrapper.
+        label = cell.css_first("b > table td") if cell is not None else None
+        entries = []
+        for inner in cell.css("table[id$=Fisa2]") if cell is not None else []:
+            for line in _rows(inner):
+                parts = [c for c in line.iter() if c.tag == "td"]
+                if len(parts) < 2 or fold(node_text(parts[0])).startswith(BIOGRAPHY_SKIP):
+                    continue
+                text = "\n".join(clean(chunk) for chunk in re.split(r"<br\s*/?>", _inner_value(parts[1])))
+                text = re.sub(r"\n{3,}", "\n\n", clean_tags(text)).strip()
+                if text:
+                    entries.append({"label": node_text(parts[0]), "text": text})
+        if label is not None and entries:
+            sections.append({"section": node_text(label), "entries": entries})
+    return sections
+
+
+def _rows(table) -> list:
+    rows = []
+    for child in table.iter():
+        if child.tag == "tr":
+            rows.append(child)
+        elif child.tag == "tbody":
+            rows.extend(r for r in child.iter() if r.tag == "tr")
+    return rows
+
+
+def _inner_value(cell) -> str:
+    """The value cell holds a nested table whose last cell is the text."""
+    cells = cell.css("td")
+    value = (cells[-1] if cells else cell).html or ""
+    # "Mai mult..." is a postback that opens the details of one entry; we keep what the page shows.
+    return re.sub(r"<a\b[^>]*__doPostBack.*?</a>", "", value, flags=re.S)
+
+
+def clean_tags(text: str) -> str:
+    lines = [clean(html(f"<p>{line}</p>").css_first("p").text()) for line in text.split("\n")]
+    return "\n".join(lines)
+
+
 def ingest(conn: psycopg.Connection, fetcher: Fetcher, legislature: int, limit: int | None = None) -> int:
     log = db.log_start(conn, SOURCE, f"members senat {legislature}")
     listed = parse_senator_list(fetcher.get("senat", LIST_URL))
     count, errors = 0, []
     for senator in listed[:limit] if limit else listed:
         try:
-            profile = parse_senator_profile(fetcher.get("senat", profile_url(senator["guid"])))
+            page = fetcher.get("senat", profile_url(senator["guid"]))
+            profile = parse_senator_profile(page)
         except (FetchError, ParseError) as error:
             errors.append(str(error))
             continue
         with conn.transaction():
-            store_senator(conn, legislature, senator, profile)
+            mid = store_senator(conn, legislature, senator, profile)
+        try:
+            # The biography is a postback on the profile page ("Biografie" link).
+            form = {**form_fields(page), "__EVENTTARGET": BIOGRAPHY, "__EVENTARGUMENT": ""}
+            biography = parse_biography(fetcher.post("senat", profile_url(senator["guid"]), form, "biografie"))
+            with conn.transaction():
+                store_cv(conn, mid, biography, profile_url(senator["guid"]))
+        except (FetchError, ParseError) as error:
+            errors.append(f"{mid} biografie: {error}")
         count += 1
     db.log_end(conn, log, "ok" if not errors else "partial", count, "\n".join(errors[:20]) or None)
     return count

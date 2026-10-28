@@ -1,12 +1,12 @@
 """Derived indicators. All numbers shown on the site and in the API come from these queries.
 
 Definitions (also on the methodology page):
-- Deputies' vote attendance: share of the chamber's nominal, non-test votes held while the deputy was in office
-  at which the deputy is listed as present. A vote without a published nominal list is not counted.
-- Senators' vote attendance: the session counts senat.ro prints on the profile ("77 ședințe dintr-un total de 100").
-- Party-line loyalty: among votes where the deputy voted yes/no/abstain and their group (as printed on the vote)
+- Vote attendance: share of the chamber's nominal, non-test votes held while the MP was in office at which the MP
+  is listed as present (both chambers). A vote without a published nominal list is not counted. Senators without
+  any collected nominal vote fall back to the session counts senat.ro prints on the profile.
+- Party-line loyalty: among votes where the MP voted yes/no/abstain and their group (as printed on the vote)
   had a strict majority option among its present members, the share that matches that option. Unaffiliated
-  deputies have no group line and get no loyalty score.
+  MPs have no group line and get no loyalty score.
 """
 
 import re
@@ -39,7 +39,6 @@ WITH vote_window AS (
     JOIN votes v ON v.chamber = m.chamber AND v.has_nominal AND NOT v.is_test
          AND v.voted_at::date >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
          AND (m.mandate_end IS NULL OR v.voted_at::date <= m.mandate_end)
-    WHERE m.chamber = 'cd'
     GROUP BY m.id
 ),
 present AS (
@@ -98,11 +97,11 @@ SELECT m.id, m.chamber, m.legislature, m.name, m.sort_name, m.photo_url, m.const
             THEN coalesce(s.questions_stat, 0) + coalesce(s.interpellations, 0) END AS questions,
        CASE WHEN s.member_id IS NOT NULL THEN coalesce(s.motions, 0) END AS motions,
        CASE WHEN s.member_id IS NOT NULL THEN coalesce(s.statements, 0) END AS statements,
-       CASE WHEN m.chamber = 'cd' THEN w.eligible ELSE s.vote_sessions_total END AS attendance_base,
-       CASE WHEN m.chamber = 'cd' THEN p.present ELSE s.vote_sessions END AS attendance_present,
-       CASE WHEN m.chamber = 'cd' THEN round(p.present::numeric / nullif(w.eligible, 0), 4)
+       CASE WHEN w.eligible > 0 THEN w.eligible ELSE s.vote_sessions_total END AS attendance_base,
+       CASE WHEN w.eligible > 0 THEN coalesce(p.present, 0) ELSE s.vote_sessions END AS attendance_present,
+       CASE WHEN w.eligible > 0 THEN round(coalesce(p.present, 0)::numeric / w.eligible, 4)
             ELSE round(s.vote_sessions::numeric / nullif(s.vote_sessions_total, 0), 4) END AS attendance,
-       CASE WHEN m.chamber = 'cd' THEN 'vote' ELSE 'session' END AS attendance_unit,
+       CASE WHEN w.eligible > 0 THEN 'vote' WHEN s.vote_sessions_total > 0 THEN 'session' END AS attendance_unit,
        p.yes, p.no, p.abstain,
        l.considered AS loyalty_base,
        round(l.loyal::numeric / nullif(l.considered, 0), 4) AS loyalty,
@@ -236,7 +235,7 @@ def member_votes(conn: psycopg.Connection, member_id: str, limit: int = 50, offs
                    AND r.group_code NOT ILIKE 'neafilia%%') AS against_group
            FROM vote_records r JOIN votes v ON v.id = r.vote_id
            LEFT JOIN line l ON l.vote_id = r.vote_id AND l.group_code = r.group_code
-           WHERE r.member_id = %s ORDER BY v.voted_at DESC LIMIT %s OFFSET %s""",
+           WHERE r.member_id = %s ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST LIMIT %s OFFSET %s""",
         (member_id, limit, offset),
     ).fetchall()
 
@@ -278,6 +277,11 @@ STAGE_SQL = """CASE WHEN law IS NOT NULL THEN 'lege'
                     ELSE 'în dezbatere' END"""
 
 
+# A bill in both chambers has one page, the cdep.ro one; Senate records of such bills are not listed separately.
+ONE_PAGE_PER_BILL = """NOT (chamber = 'senat' AND senate_key IN (
+    SELECT senate_key FROM bills WHERE chamber = 'cd' AND senate_key IS NOT NULL))"""
+
+
 def bills(
     conn: psycopg.Connection,
     query: str | None = None,
@@ -286,7 +290,7 @@ def bills(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    where, params = ["TRUE"], {"limit": limit, "offset": offset}
+    where, params = [ONE_PAGE_PER_BILL], {"limit": limit, "offset": offset}
     if query:
         where.append("(search @@ to_tsquery('simple', %(q)s) OR number ILIKE %(like)s OR senate_number ILIKE %(like)s)")
         params["q"] = ts_query(query) or "''"
@@ -296,7 +300,7 @@ def bills(
         params["stage"] = stage
     if ordinance:
         where.append("ordinance IS NOT NULL")
-    sql = f"""SELECT id, number, senate_number, title, kind, status, law, ordinance, urgent, registered_on,
+    sql = f"""SELECT id, chamber, number, senate_number, title, kind, status, law, ordinance, urgent, registered_on,
                   last_event_on,
                      initiator_summary, {STAGE_SQL} AS stage,
                      CASE WHEN law IS NOT NULL THEN last_event_on - registered_on END AS days_to_law
@@ -306,7 +310,9 @@ def bills(
 
 
 def bill_stage_counts(conn: psycopg.Connection) -> list[dict]:
-    return conn.execute(f"SELECT {STAGE_SQL} AS stage, count(*) AS n FROM bills GROUP BY 1 ORDER BY 2 DESC").fetchall()
+    return conn.execute(
+        f"SELECT {STAGE_SQL} AS stage, count(*) AS n FROM bills WHERE {ONE_PAGE_PER_BILL} GROUP BY 1 ORDER BY 2 DESC"
+    ).fetchall()
 
 
 def ordinance_stats(conn: psycopg.Connection) -> dict:
@@ -352,9 +358,9 @@ def search(conn: psycopg.Connection, query: str, limit: int = 20) -> dict[str, l
             params,
         ).fetchall(),
         "bills": conn.execute(
-            """SELECT id, number, title, status, ts_rank(search, q) AS rank
+            f"""SELECT id, number, title, status, ts_rank(search, q) AS rank
                FROM bills, to_tsquery('simple', %(q)s) q
-               WHERE search @@ q OR number ILIKE %(like)s ORDER BY rank DESC,
+               WHERE (search @@ q OR number ILIKE %(like)s) AND {ONE_PAGE_PER_BILL} ORDER BY rank DESC,
                    last_event_on DESC NULLS LAST LIMIT %(limit)s""",
             params,
         ).fetchall(),

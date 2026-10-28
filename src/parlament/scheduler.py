@@ -1,8 +1,8 @@
 """Periodic collection in one process (no daemon framework): a loop that runs due jobs and sleeps.
 
 Jobs and cadence (Bucharest time):
-- every weekday at 21:00: today's votes, the current agenda, and refresh of bills still in debate (last 30 days)
-- every Sunday at 03:00: all MP profiles and activity lists, open-data CSV export
+- every weekday at 21:00: recent votes and agendas of both chambers, and refresh of bills still in debate
+- every Sunday at 03:00: all MP profiles (with Senate biographies) and activity lists, open-data CSV export
 """
 
 import datetime as dt
@@ -13,7 +13,17 @@ import traceback
 from parlament import db, exports
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
-from parlament.ingest import cdep_activity, cdep_agenda, cdep_bills, cdep_members, cdep_votes, senat_members
+from parlament.ingest import (
+    cdep_activity,
+    cdep_agenda,
+    cdep_bills,
+    cdep_members,
+    cdep_votes,
+    senat_agenda,
+    senat_bills,
+    senat_members,
+    senat_votes,
+)
 
 log = logging.getLogger("parlament.scheduler")
 
@@ -31,6 +41,11 @@ def daily(conn, fetcher) -> None:
     ]
     cdep_bills.ingest(conn, fetcher, sorted(set(idps) | set(pending)))
     cdep_bills.relink(conn)
+    _, codes = senat_votes.ingest(conn, fetcher, today - dt.timedelta(days=7), today, settings().legislature)
+    _, agenda_codes = senat_agenda.ingest(
+        conn, fetcher, cdep_votes.sitting_days(today - dt.timedelta(days=3), today + dt.timedelta(days=7))
+    )
+    senat_bills.ingest(conn, fetcher, codes + agenda_codes, refresh_days=30)
 
 
 def weekly(conn, fetcher) -> None:

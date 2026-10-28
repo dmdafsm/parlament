@@ -179,14 +179,16 @@ def parse_events(page: str) -> list[dict]:
     return events
 
 
-def store_bill(conn: psycopg.Connection, idp: str, bill: dict) -> str:
-    bid = f"cd-{idp}"
+def store_bill(conn: psycopg.Connection, idp: str, bill: dict, chamber: str = "cd", url: str | None = None) -> str:
+    """Store a bill page of either chamber (senat_bills reuses this); ids are '<chamber>-<source id>'."""
+    bid = f"{chamber}-{idp}"
     conn.execute(
-        """INSERT INTO bills (id, source_id, number, cd_number, senate_number, senate_url, bpi_number, title, kind,
-               procedure, decisional_chamber, character, urgent, status, law, law_url, initiator_summary,
+        """INSERT INTO bills (id, chamber, source_id, number, cd_number, senate_number, senate_url, bpi_number, title,
+               kind, procedure, decisional_chamber, character, urgent, status, law, law_url, initiator_summary,
                registered_on, last_event_on, ordinance, url, updated_at)
-           VALUES (%(id)s, %(idp)s, %(number)s, %(cd_number)s, %(senate_number)s, %(senate_url)s, %(bpi_number)s,
-               %(title)s, %(kind)s, %(procedure)s, %(decisional_chamber)s, %(character)s, %(urgent)s, %(status)s,
+           VALUES (%(id)s, %(chamber)s, %(idp)s, %(number)s, %(cd_number)s, %(senate_number)s, %(senate_url)s,
+               %(bpi_number)s, %(title)s, %(kind)s, %(procedure)s, %(decisional_chamber)s, %(character)s, %(urgent)s,
+               %(status)s,
                %(law)s, %(law_url)s, %(initiator_summary)s, %(registered_on)s, %(last_event_on)s, %(ordinance)s,
                %(url)s, now())
            ON CONFLICT (id) DO UPDATE SET number = EXCLUDED.number, cd_number = EXCLUDED.cd_number,
@@ -200,8 +202,9 @@ def store_bill(conn: psycopg.Connection, idp: str, bill: dict) -> str:
                updated_at = now()""",
         {
             "id": bid,
+            "chamber": chamber,
             "idp": idp,
-            "url": bill_url(idp),
+            "url": url or bill_url(idp),
             **{
                 key: bill.get(key)
                 for key in (
@@ -251,7 +254,8 @@ def store_bill(conn: psycopg.Connection, idp: str, bill: dict) -> str:
         conn.execute(
             "INSERT INTO bill_documents VALUES (%s, %s, %s, %s)", (bid, seq, document["title"], document["url"])
         )
-    link_votes_and_agenda(conn, bid, bill["number"])
+    if chamber == "cd":
+        link_votes_and_agenda(conn, bid, bill["number"])
     return bid
 
 

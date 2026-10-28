@@ -23,8 +23,13 @@ def test_attendance_and_loyalty(conn):
     assert members["cd-2024-1"]["group_changes"] == 2 and members["cd-2024-1"]["party_changes"] == 1
 
 
-def test_senator_attendance_uses_published_session_counts(conn):
+def test_senator_attendance_uses_nominal_votes_else_session_counts(conn):
     seed(conn)
+    senator = analytics.members(conn, 2024, "senat")[0]
+    # One Senate vote with a nominal list in the seed, and the senator is listed as present.
+    assert (senator["attendance_present"], senator["attendance_base"], senator["attendance_unit"]) == (1, 1, "vote")
+    # Without any collected Senate vote, the counts senat.ro prints on the profile are used.
+    conn.execute("DELETE FROM votes WHERE chamber = 'senat'")
     senator = analytics.members(conn, 2024, "senat")[0]
     assert (senator["attendance_present"], senator["attendance_base"]) == (77, 100)
     assert float(senator["attendance"]) == 0.77 and senator["attendance_unit"] == "session"
@@ -51,13 +56,23 @@ def test_votes_and_agenda_link_to_bills(conn):
     # The agenda was stored before the bill: relink attaches its item afterwards.
     cdep_bills.relink(conn)
     items = {row["bill_ref"]: row["bill_id"] for row in conn.execute("SELECT bill_ref, bill_id FROM agenda_items")}
-    assert items == {"PHCD 72/2026": None, "PL-x 501/2025": "cd-22001", "Pl-x 7/2025": None}
+    assert items == {
+        "PHCD 72/2026": None,
+        "PL-x 501/2025": "cd-22001",
+        "Pl-x 7/2025": None,
+        # Senate agenda: L1/2025 is the same bill as PL-x 501/2025; L7/2025 is only on senat.ro.
+        "L1/2025": "cd-22001",
+        "L7/2025": "senat-901",
+    }
 
 
 def test_senator_initiators_are_matched_by_name(conn):
     seed(conn)
     cdep_bills.relink(conn)
-    refs = [row["member_ref"] for row in conn.execute("SELECT member_ref FROM bill_initiators ORDER BY seq")]
+    refs = [
+        row["member_ref"]
+        for row in conn.execute("SELECT member_ref FROM bill_initiators WHERE bill_id = 'cd-22001' ORDER BY seq")
+    ]
     # 'Dobre Elena' (cdep.ro senator id 5) is the senat.ro senator 'DOBRE Elena'.
     assert refs == ["cd-2024-1", "cd-2024-3", "senat-2024-aaaaaaaa-1111-2222-3333-444444444444"]
 
@@ -91,7 +106,8 @@ def test_exports_and_feeds(conn, tmp_path):
     paths = exports.write_all(conn, str(tmp_path))
     assert {path.name for path in paths} >= {"parlamentari.csv", "voturi_nominale.csv"}
     header, *rows = (tmp_path / "voturi_nominale.csv").read_text(encoding="utf-8").splitlines()
-    assert header == "vote_id,member_id,member_name,group_code,choice" and len(rows) == 4
+    assert header == "vote_id,member_id,member_name,group_code,choice"
+    assert len([r for r in rows if r.startswith("cd-")]) == 4 and len([r for r in rows if r.startswith("senat-")]) == 3
     xml = feeds.member_feed(conn, "https://example.invalid/", "cd-2024-1")
     assert "<rss" in xml and "Vot: Pentru" in xml and "Inițiativă: PL-x 501/2025" in xml
     assert feeds.member_feed(conn, "https://example.invalid/", "nope") is None

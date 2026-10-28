@@ -8,7 +8,17 @@ import typer
 from parlament import db
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
-from parlament.ingest import cdep_activity, cdep_agenda, cdep_bills, cdep_members, cdep_votes, senat_members
+from parlament.ingest import (
+    cdep_activity,
+    cdep_agenda,
+    cdep_bills,
+    cdep_members,
+    cdep_votes,
+    senat_agenda,
+    senat_bills,
+    senat_members,
+    senat_votes,
+)
 
 app = typer.Typer(help="Parlamentul României pe înțelesul tuturor: colectare date și site.", no_args_is_help=True)
 ingest_app = typer.Typer(help="Colectează date de pe cdep.ro și senat.ro.", no_args_is_help=True)
@@ -100,32 +110,49 @@ def ingest_votes(
     end: str = typer.Option(None, "--to", help="Data de sfarsit (implicit azi)"),
     days: int = typer.Option(14, help="Ultimele N zile, daca lipseste --from"),
     nominal: bool = typer.Option(True, help="Descarca si votul nominal"),
-    latest: bool = typer.Option(False, help="Doar ultima sedinta cu vot electronic"),
+    latest: bool = typer.Option(False, help="Doar ultima sedinta cu vot electronic (Camera)"),
+    chamber: str = typer.Option("all", help="cd, senat sau all"),
     from_raw: bool = CacheOption,
 ) -> None:
-    """Voturile electronice ale Camerei Deputatilor (nominal)."""
+    """Voturile electronice (nominal) ale Camerei Deputatilor si ale Senatului."""
     last = _date(end) if end else dt.date.today()
     first = _date(start) if start else last - dt.timedelta(days=days)
-    selected = [None] if latest else cdep_votes.sitting_days(first, last)
     with collecting(from_raw) as (conn, fetcher):
-        count = cdep_votes.ingest_days(conn, fetcher, selected, nominal)
-        typer.echo(f"Voturi: {count} ({'ultima sedinta' if latest else f'{first} - {last}'})")
-        cdep_bills.relink(conn)
+        if chamber in ("cd", "all"):
+            selected = [None] if latest else cdep_votes.sitting_days(first, last)
+            count = cdep_votes.ingest_days(conn, fetcher, selected, nominal)
+            typer.echo(f"Voturi Camera: {count} ({'ultima sedinta' if latest else f'{first} - {last}'})")
+            cdep_bills.relink(conn)
+        if chamber in ("senat", "all"):
+            count, codes = senat_votes.ingest(conn, fetcher, first, last, settings().legislature, nominal)
+            typer.echo(f"Voturi Senat: {count} ({first} - {last})")
+            typer.echo(f"Proiecte Senat: {senat_bills.ingest(conn, fetcher, codes)}")
 
 
 @ingest_app.command("agenda")
 def ingest_agenda(
     date: list[str] = typer.Option(None, help="Zile (AAAA-LL-ZZ); implicit ordinea de zi curenta"),
+    chamber: str = typer.Option("all", help="cd, senat sau all"),
     from_raw: bool = CacheOption,
 ) -> None:
-    """Ordinea de zi a plenului Camerei Deputatilor (si proiectele de pe ea)."""
-    days = [_date(day) for day in date] if date else [None]
+    """Ordinea de zi a plenului (si proiectele de pe ea). Senatul publica una pe zi: implicit -3..+7 zile."""
     with collecting(from_raw) as (conn, fetcher):
-        count, idps = cdep_agenda.ingest(conn, fetcher, days)
-        typer.echo(f"Ordini de zi: {count}")
-        if idps:
-            typer.echo(f"Proiecte: {cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=7)}")
-        cdep_bills.relink(conn)
+        if chamber in ("cd", "all"):
+            count, idps = cdep_agenda.ingest(conn, fetcher, [_date(day) for day in date] if date else [None])
+            typer.echo(f"Ordini de zi Camera: {count}")
+            if idps:
+                typer.echo(f"Proiecte: {cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=7)}")
+            cdep_bills.relink(conn)
+        if chamber in ("senat", "all"):
+            today = dt.date.today()
+            days = (
+                [_date(day) for day in date]
+                if date
+                else cdep_votes.sitting_days(today - dt.timedelta(days=3), today + dt.timedelta(days=7))
+            )
+            count, codes = senat_agenda.ingest(conn, fetcher, days)
+            typer.echo(f"Ordini de zi Senat: {count}")
+            typer.echo(f"Proiecte Senat: {senat_bills.ingest(conn, fetcher, codes, refresh_days=7)}")
 
 
 @ingest_app.command("photos")
@@ -145,8 +172,8 @@ def ingest_all(
     """Toata colectarea, in ordine: parlamentari, activitate, ordinea de zi, voturi."""
     ingest_members(chamber="all", legislature=None, limit=limit, from_raw=False)
     ingest_activity(legislature=None, limit=limit, with_bills=True, from_raw=False)
-    ingest_agenda(date=None, from_raw=False)
-    ingest_votes(start=None, end=None, days=vote_days, nominal=True, latest=False, from_raw=False)
+    ingest_agenda(date=None, chamber="all", from_raw=False)
+    ingest_votes(start=None, end=None, days=vote_days, nominal=True, latest=False, chamber="all", from_raw=False)
     ingest_photos(refresh=False)
 
 
@@ -154,7 +181,7 @@ def ingest_all(
 def relink() -> None:
     """Leaga voturile si punctele de pe ordinea de zi de proiectele salvate."""
     with db.connect() as conn:
-        typer.echo(f"Legaturi noi: {cdep_bills.relink(conn)}")
+        typer.echo(f"Legaturi noi: {cdep_bills.relink(conn) + senat_bills.link(conn)}")
 
 
 @app.command()
