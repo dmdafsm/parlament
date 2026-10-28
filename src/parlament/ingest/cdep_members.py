@@ -12,8 +12,8 @@ from parlament.fetch import Fetcher, FetchError
 from parlament.parsing import (
     ParseError,
     clean,
+    fold,
     html,
-    int_or_none,
     node_text,
     parse_long_date,
     parse_month_label,
@@ -21,35 +21,34 @@ from parlament.parsing import (
 )
 
 BASE = "https://www.cdep.ro"
+# Since 2025 the Oracle applications are served under /ords (old /pls/... URLs return 404).
+SITE = f"{BASE}/ords"
 SOURCE = "cdep.ro"
 CHAMBER_CODE = {"cd": "2", "senat": "1"}  # cdep.ro `cam` parameter
 
 # Profile counters: label prefix on the page -> metric name.
+# Profile counters: label (unaccented, lower case) prefix -> metric name.
+# Checked in order; "Luari de cuvant in BP" (Standing Bureau sittings) must not count as plenary speeches.
 STAT_LABELS = {
-    "luări de cuvânt": "speeches",
-    "luari de cuvânt": "speeches",
-    "propuneri legislative iniţiate": "bills",
-    "propuneri legislative inițiate": "bills",
-    "proiecte de hotarâre iniţiate": "resolutions",
-    "proiecte de hotărâre inițiate": "resolutions",
-    "întrebări şi interpelări": "questions",
-    "întrebări și interpelări": "questions",
-    "moţiuni": "motions",
-    "moțiuni": "motions",
-    "declaraţii politice": "political_statements",
-    "declarații politice": "political_statements",
+    "luari de cuvant in bp": None,
+    "luari de cuvant": "speeches",
+    "propuneri legislative initiate": "bills",
+    "proiecte de hotarare initiate": "resolutions",
+    "intrebari si interpelari": "questions",
+    "motiuni": "motions",
+    "declaratii politice": "political_statements",
 }
 
 
 def list_url(legislature: int) -> str:
     # Without `leg` the site lists the legislature in office; this is the URL its own menu links to.
     if legislature == CURRENT_LEGISLATURE:
-        return f"{BASE}/pls/parlam/structura2015.de?idl=1"
-    return f"{BASE}/pls/parlam/structura2015.de?leg={legislature}&idl=1"
+        return f"{SITE}/pls/parlam/structura2015.de?idl=1"
+    return f"{SITE}/pls/parlam/structura2015.de?leg={legislature}&idl=1"
 
 
 def profile_url(idm: str, legislature: int, chamber: str = "cd") -> str:
-    return f"{BASE}/pls/parlam/structura2015.mp?idm={idm}&cam={CHAMBER_CODE[chamber]}&leg={legislature}"
+    return f"{SITE}/pls/parlam/structura2015.mp?idm={idm}&cam={CHAMBER_CODE[chamber]}&leg={legislature}"
 
 
 def member_id(chamber: str, legislature: int, idm: str) -> str:
@@ -147,80 +146,97 @@ class Profile:
 
 
 def _sections(tree) -> dict[str, object]:
+    """Titled boxes: `div.boxDep > h3` (layout until 2025) or `div.mp-info-box2025 > h4` (2025 redesign)."""
     sections = {}
-    for box in tree.css("div.boxDep"):
-        title = box.css_first("h3")
+    for box in tree.css("div.boxDep, div.mp-info-box2025"):
+        title = box.css_first("h3, h4")
         if title is not None:
             sections[node_text(title).rstrip(":").lower()] = box
     return sections
 
 
+def _parse_elected(profile: "Profile", body: str) -> None:
+    """'ales deputat în circumscriptia electorala nr.35 SUCEAVA ... data validarii: 21 decembrie 2024 - HCD ...'."""
+    profile.elected_note = re.split(r"data (?:valid|înceta|inceta)", body)[0].strip()
+    match = re.search(r"nr\.\s*(\d+)\s+(.+?)(?:\s+pe listele|\s+data|$)", profile.elected_note)
+    if match:
+        profile.constituency_no = int(match.group(1))
+        name = match.group(2).strip(" -")
+        # Constituency 43 is printed as 'Circumscriptia ... cu domiciliul în afara tarii'.
+        profile.constituency = "Diaspora" if "afara" in name.lower() else name.title()
+    validated = re.search(r"data valid(?:ării|arii|ării?)?\w*:\s*([^-]+)", body, re.IGNORECASE)
+    profile.validated_on = parse_long_date(validated.group(1)) if validated else None
+    ended = re.search(r"data (?:încet|incet)\w* mandatului:\s*(.+)", body, re.IGNORECASE)
+    if ended:
+        profile.mandate_end = parse_long_date(ended.group(1))
+        profile.mandate_end_note = clean(ended.group(1))
+
+
 def parse_profile(page: str) -> Profile:
     tree = html(page)
-    heading = tree.css_first("div.profile-dep h1")
+    heading = tree.css_first("div.profile-dep h1, h1.mp-profile-name2025")
     if heading is None:
         raise ParseError("cdep profile: missing name heading")
     profile = Profile(name=node_text(heading))
-    picture = tree.css_first("div.profile-pic-dep")
+    picture = tree.css_first("div.profile-pic-dep, div.mp-profile-photo2025")
     if picture is not None:
         image = picture.css_first("img")
         if image is not None and image.attributes.get("src"):
             profile.photo_url = absolute(image.attributes["src"])
-        born = re.search(r"n\.\s*(.+)", node_text(picture))
-        profile.birth_date = parse_long_date(born.group(1)) if born else None
+    born_node = tree.css_first("div.profile-pic-dep, div.mp-contact-item2025")
+    born = re.search(r"n\.\s*(.+)", node_text(born_node)) if born_node is not None else None
+    profile.birth_date = parse_long_date(born.group(1)) if born else None
+    details = tree.css_first("div.mp-profile-details2025 ul")
+    if details is not None:
+        _parse_elected(profile, " ".join(node_text(item) for item in details.css("li")))
 
     sections = _sections(tree)
     for title, box in sections.items():
         text = node_text(box)
         if title in ("deputat", "senator"):
-            body = node_text(box.css_first("p"))
-            profile.elected_note = re.split(r"data (?:valid|înceta|inceta)", body)[0].strip()
-            match = re.search(r"nr\.\s*(\d+)\s+(.+?)(?:\s+pe listele|\s+data|$)", profile.elected_note)
-            if match:
-                profile.constituency_no = int(match.group(1))
-                profile.constituency = match.group(2).strip().title()
-            validated = re.search(r"data validării?:\s*([^-]+)", body, re.IGNORECASE) or re.search(
-                r"data validarii:\s*([^-]+)", body
-            )
-            profile.validated_on = parse_long_date(validated.group(1)) if validated else None
-            ended = re.search(r"data (?:încet|incet)\w* mandatului:\s*(.+)", body, re.IGNORECASE)
-            if ended:
-                profile.mandate_end = parse_long_date(ended.group(1))
-                profile.mandate_end_note = clean(ended.group(1))
-        elif title.startswith("formaţiunea politică") or title.startswith("formațiunea politică"):
+            _parse_elected(profile, node_text(box.css_first("p")))
+        elif title.startswith("formațiunea politică"):
             profile.parties = _parse_parties(box)
-        elif title.startswith("organizaţia minorităţilor") or title.startswith("organizația minorităților"):
+        elif title.startswith("organizația minorităților"):
             link = box.css_first("a")
             profile.minority_org = node_text(link) if link else text
         elif title.startswith("grupul parlamentar"):
             groups, profile.roles = _parse_groups(box)
             # The current group is listed first, earlier ones after it; order the history by date.
             profile.groups = sorted(groups, key=lambda g: (g["start"] or dt.date.min, g["end"] or dt.date.max))
-        elif title.startswith("comisii") or title.startswith("delegaţii") or title.startswith("delegații"):
+        elif title.startswith("comisii"):
             profile.committees.extend(_parse_committees(box, title))
         elif title.startswith("activitatea parlamentar"):
             profile.stats = _parse_stats(box)
         elif title.startswith("biroul parlamentar"):
             profile.offices = clean(re.sub(r"^biroul parlamentar:?", "", text, flags=re.IGNORECASE))
-    mail = tree.css_first('div.profile-dep a[href^="mailto:"], div.boxDep a[href^="mailto:"]')
+    mail = tree.css_first(
+        'div.profile-dep a[href^="mailto:"], div.boxDep a[href^="mailto:"], div.mp-profile-card2025 a[href^="mailto:"]'
+    )
     if mail is not None:
         profile.email = mail.attributes["href"].removeprefix("mailto:").strip()
     return profile
 
 
 def _parse_parties(box) -> list[dict]:
+    """Rows link the party; the old layout shows 'PNL - Partidul Național Liberal', the 2025 one only the full name."""
+    from parlament.ingest.senat_members import short_party
+
     parties = []
-    for inner in box.css("table table tr"):
-        cells = inner.css("td")
-        link = inner.css_first("a")
-        if link is None:
+    for row in box.css("tr"):
+        link = row.css_first("a")
+        if link is None or len(row.css("tr")) > 1:  # css() includes the row itself; skip outer rows
             continue
-        short = node_text(link)
-        texts = [node_text(cell) for cell in cells]
-        name = texts[2] if len(texts) >= 3 and texts[1] == "-" else None
-        period = (
-            parse_period(texts[-1]) if texts and ("din" in texts[-1] or "până" in texts[-1]) else Period(None, None)
-        )
+        texts = [node_text(cell) for cell in row.iter() if cell.tag == "td"]
+        label = node_text(link)
+        if len(texts) >= 3 and "-" in texts:
+            short, name = label, texts[texts.index("-") + 1]
+        elif label.lower().startswith("fără adeziune"):
+            short, name = label, None
+        else:
+            short, name = short_party(label), label
+        last = texts[-1] if texts else ""
+        period = parse_period(last) if ("din" in last or "până" in last) else Period(None, None)
         parties.append({"party": short, "party_name": name, "start": period.start, "end": period.end})
     return parties
 
@@ -280,24 +296,37 @@ def _parse_committees(box, title: str) -> list[dict]:
 
 
 def _parse_stats(box) -> dict[str, tuple[int, str | None]]:
+    """Counters as table rows (until 2025) or as 'Label: value' lines separated by <br> (2025 redesign)."""
+    lines = []
+    rows = [row for row in box.css("tr") if len(row.css("td")) >= 2]
+    if rows:
+        lines = [(node_text(row.css("td")[0]), row.css("td")[1]) for row in rows]
+    else:
+        paragraph = box.css_first("p")
+        for chunk in re.split(r"<br\s*/?>", paragraph.html if paragraph is not None else ""):
+            node = html(f"<div>{chunk}</div>").css_first("div")
+            label, _, _ = node_text(node).partition(":")
+            lines.append((label, node))
     stats = {}
-    for row in box.css("tr"):
-        cells = row.css("td")
-        if len(cells) < 2:
-            continue
-        label = node_text(cells[0]).rstrip(":").strip().lower()
-        metric = next((name for prefix, name in STAT_LABELS.items() if label.startswith(prefix)), None)
+    for label, value_node in lines:
+        key = fold(label.rstrip(":"))
+        prefix = next((prefix for prefix in STAT_LABELS if key.startswith(prefix)), None)
+        metric = STAT_LABELS.get(prefix)
         if metric is None:
             continue
-        bold = cells[1].css_first("b")
-        value = int_or_none(node_text(bold)) if bold else None
-        if value is None:
+        text = node_text(value_node)
+        value_text = text.split(":", 1)[1] if ":" in text and rows == [] else text
+        number = re.search(r"\d+", value_text)
+        if number is None:
             continue
-        link = cells[1].css_first("a")
-        stats[metric] = (value, absolute(link.attributes["href"]) if link else None)
-        sessions = re.search(r"în\s+(\d+)\s+şedinţe|în\s+(\d+)\s+ședințe", node_text(cells[1]))
+        link = value_node.css_first("a")
+        stats[metric] = (int(number.group(0)), absolute(link.attributes["href"]) if link else None)
+        sessions = re.search(r"în\s+(\d+)\s+ședințe", value_text)
         if sessions:
-            stats["speech_sessions"] = (int(sessions.group(1) or sessions.group(2)), None)
+            stats["speech_sessions"] = (int(sessions.group(1)), None)
+        laws = re.search(r"din care\s+(\d+)\s+promulgat", value_text)
+        if laws:
+            stats["laws"] = (int(laws.group(1)), None)
     return stats
 
 
@@ -321,7 +350,7 @@ def store_deputy(conn: psycopg.Connection, legislature: int, listed: ListedDeput
                 listed.group_source_id,
                 listed.group_short,
                 listed.group_short,
-                f"{BASE}/pls/parlam/structura2015.gp?idg={listed.group_source_id}&leg={legislature}",
+                f"{SITE}/pls/parlam/structura2015.gp?idg={listed.group_source_id}&leg={legislature}",
             ),
         )
     current_party = next(

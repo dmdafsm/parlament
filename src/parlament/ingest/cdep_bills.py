@@ -8,14 +8,14 @@ import psycopg
 
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
-from parlament.ingest.cdep_members import BASE, absolute, member_ref_from_url
+from parlament.ingest.cdep_members import SITE, absolute, member_ref_from_url
 from parlament.parsing import ParseError, clean, fold, html, node_text, parse_dotted_date, query_param
 
 SOURCE = "cdep.ro"
 
 
 def bill_url(idp: str) -> str:
-    return f"{BASE}/pls/proiecte/upl_pck2015.proiect?idp={idp}"
+    return f"{SITE}/pls/proiecte/upl_pck2015.proiect?idp={idp}"
 
 
 def bill_key(reference: str) -> str | None:

@@ -12,7 +12,7 @@ import psycopg
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
 from parlament.ingest.cdep_bills import find_bill_ref
-from parlament.ingest.cdep_members import BASE, member_ref_from_url
+from parlament.ingest.cdep_members import SITE, member_ref_from_url
 from parlament.parsing import ParseError, clean, html, int_or_none, node_text, parse_long_date, query_param
 
 SOURCE = "cdep.ro"
@@ -20,16 +20,16 @@ CHOICES = {"DA": "yes", "NU": "no", "AB": "abstain", "-": "present_not_voting"}
 
 
 def day_url(day: dt.date) -> str:
-    return f"{BASE}/pls/steno/evot2015.data?dat={day:%Y%m%d}&cam=2&idl=1"
+    return f"{SITE}/pls/steno/evot2015.data?dat={day:%Y%m%d}&cam=2&idl=1"
 
 
 def nominal_url(idv: str) -> str:
-    return f"{BASE}/pls/steno/evot2015.nominal?idv={idv}&idl=1"
+    return f"{SITE}/pls/steno/evot2015.nominal?idv={idv}&idl=1"
 
 
 def latest_url() -> str:
     """Without a date the page shows the most recent sitting with electronic votes."""
-    return f"{BASE}/pls/steno/evot2015.data"
+    return f"{SITE}/pls/steno/evot2015.data"
 
 
 def page_date(page: str) -> dt.date | None:

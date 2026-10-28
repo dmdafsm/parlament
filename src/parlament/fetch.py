@@ -16,6 +16,23 @@ class FetchError(Exception):
     """A page could not be downloaded or is not available."""
 
 
+class BlockedError(Exception):
+    """The site answered with a bot check (CAPTCHA) or a rate limit. The whole run stops; we never try to pass it."""
+
+
+# The cdep.ro firewall challenge ("Firewall Captcha Authentication") has its own <h1>, so its specific markers
+# count on their own; the generic ones only on pages without a heading (a bill title may mention "captcha").
+CHALLENGE = (b"Captcha Result", b"Captcha Authentication")
+BOT_CHECK = (b"Security check", b"captcha")
+
+
+def is_bot_check(content: bytes) -> bool:
+    head = content[:20000]
+    if any(marker in head for marker in CHALLENGE):
+        return True
+    return any(marker in head for marker in BOT_CHECK) and b"<h1" not in head
+
+
 class Fetcher:
     def __init__(self, conf: Settings | None = None, use_cache: bool = False):
         self.conf = conf or settings()
@@ -45,6 +62,8 @@ class Fetcher:
         path = self.cache_path(source, url)
         if self.use_cache and path.exists():
             return decode(path.read_bytes(), encoding)
+        if self.conf.fetch_mode == "offline":
+            raise FetchError(f"{url}: not in the raw cache (offline mode)")
         target = WAYBACK + url if self.conf.fetch_mode == "wayback" else url
         wait = self.conf.request_delay - (time.monotonic() - self._last)
         if wait > 0:
@@ -56,7 +75,9 @@ class Fetcher:
         finally:
             self._last = time.monotonic()
         if response.status_code == 429:
-            raise FetchError(f"{url}: rate limited (HTTP 429); stop and retry later")
+            raise BlockedError(f"{url}: rate limited (HTTP 429); stop and retry later")
+        if is_bot_check(response.content):
+            raise BlockedError(f"{url}: the site showed a bot check (CAPTCHA); stop and retry later, more slowly")
         if response.status_code != 200:
             raise FetchError(f"{url}: HTTP {response.status_code}")
         if (

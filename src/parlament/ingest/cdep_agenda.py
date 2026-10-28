@@ -8,7 +8,7 @@ import psycopg
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
 from parlament.ingest.cdep_bills import find_bill_ref
-from parlament.ingest.cdep_members import BASE, absolute
+from parlament.ingest.cdep_members import SITE, absolute
 from parlament.parsing import MONTHS, ParseError, clean, html, node_text, parse_dotted_date, query_param
 
 SOURCE = "cdep.ro"
@@ -16,7 +16,7 @@ SOURCE = "cdep.ro"
 
 def agenda_url(day: dt.date | None = None) -> str:
     suffix = f"?dat={day:%Y%m%d}" if day else ""
-    return f"{BASE}/pls/caseta/eCaseta2015.OrdineZi{suffix}"
+    return f"{SITE}/pls/caseta/eCaseta2015.OrdineZi{suffix}"
 
 
 def first_day(title: str) -> dt.date | None:
@@ -48,6 +48,7 @@ def parse_agenda(page: str) -> dict:
         if len(cells) != 4:
             continue
         link = cells[1].css_first("a")
+        href = link.attributes.get("href", "") if link else ""
         text = node_text(cells[2])
         if not text:
             continue
@@ -55,7 +56,8 @@ def parse_agenda(page: str) -> dict:
             {
                 "position": clean(node_text(cells[0])).rstrip(".") or None,
                 "bill_ref": node_text(link) if link else find_bill_ref(text),
-                "bill_idp": query_param(link.attributes.get("href", ""), "idp") if link else None,
+                # Laws are in upl_pck2015; chamber resolutions (PHCD) in uph_pck2015 have their own ids.
+                "bill_idp": query_param(href, "idp") if link and "upl_pck2015" in href else None,
                 "text": text,
             }
         )

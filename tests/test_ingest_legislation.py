@@ -59,6 +59,7 @@ def test_agenda():
     assert agenda["approved_on"] == dt.date(2025, 6, 23) and agenda["first_day"] == dt.date(2025, 6, 23)
     assert agenda["pdf_url"].endswith("F1/ODZ.pdf")
     assert [(i["position"], i["bill_ref"], i["bill_idp"]) for i in agenda["items"]] == [
+        ("-", "PHCD 72/2026", None),  # chamber resolution: different application, its id is not a bill id
         ("1", "PL-x 501/2025", "22001"),
         ("2", "Pl-x 7/2025", "22002"),
     ]
@@ -72,7 +73,7 @@ def test_activity_lists():
         ("70001", "interpelare", "297B", dt.date(2025, 6, 3), "Situația drumurilor județene"),
         ("70002", "intrebare", "15A", dt.date(2025, 2, 10), "Finanțarea spitalului"),
     ]
-    assert questions[0]["url"] == "https://www.cdep.ro/pls/parlam/interpelari2015.detalii?idi=70001&idl=1"
+    assert questions[0]["url"] == "https://www.cdep.ro/ords/pls/parlam/interpelari2015.detalii?idi=70001&idl=1"
     motions = cdep_activity.parse_motions(fixture("cdep_motions.html"))
     assert (
         motions[0]["id"] == "cd-1601"
