@@ -39,6 +39,10 @@ WITH vote_window AS (
     JOIN votes v ON v.chamber = m.chamber AND v.has_nominal AND NOT v.is_test
          AND v.voted_at::date >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
          AND (m.mandate_end IS NULL OR v.voted_at::date <= m.mandate_end)
+         -- A mandate of an earlier legislature with no end date ends when the next legislature starts.
+         AND v.voted_at::date < coalesce((SELECT min(n.validated_on) FROM members n
+                                          WHERE n.chamber = m.chamber AND n.legislature = m.legislature + 4),
+                                         'infinity'::date)
     GROUP BY m.id
 ),
 present AS (

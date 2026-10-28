@@ -25,6 +25,8 @@ PROPOSAL = re.compile(
     re.I,
 )
 
+SPECULATION = re.compile(r"\b(?:ar|ar\s+mai)\s+putea\b|\bprobabil\b", re.I)
+
 SYSTEM = (
     "Ești un redactor care explică proiectele de lege pe înțelesul tuturor. Scrii în limba română, cu diacritice, "
     "propoziții scurte și cuvinte obișnuite. Folosești doar informațiile din textul primit: nu inventa cifre, "
@@ -58,10 +60,13 @@ def pending(conn: psycopg.Connection, model: str) -> list[dict]:
 
 
 def tidy(answer: str) -> str | None:
-    """The model's answer without markdown or a leading label; None when it is empty or obviously off."""
+    """The model's answer without markdown, a leading label or speculative sentences ('ar putea'), which the
+    prompt forbids but the model still writes now and then; None when it is empty or obviously off."""
     text = re.sub(r"[*#_`]+", "", answer).strip()
     text = re.sub(r"^(?:rezumat|explicație|pe scurt)\s*:\s*", "", text, flags=re.I)
     text = re.sub(r"\s+", " ", text)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-ZĂÂÎȘȚ])", text)
+    text = " ".join(sentence for sentence in sentences if not SPECULATION.search(sentence))
     return text if 40 <= len(text) <= 900 else None
 
 

@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
-from parlament import db
+from parlament import analytics, db
 from parlament.ingest import cdep_members
 from parlament.ingest.cdep_members import ListedDeputy, Profile
 from tests.seed import seed
@@ -143,6 +143,11 @@ def test_previous_legislature(client, database_url):
     page = client.get("/parlamentari?legislatura=2020").text
     assert "Legislatura 2020–2024" in page and "Legislatură încheiată" in page
     assert "/parlamentar/cd-2020-77" in page and "/parlamentar/cd-2024-3" not in page
+    # Every mandate of an ended legislature has ended: no "former" filter or label.
+    assert "mandat încetat" not in page and 'name="fosti"' not in page
+    # The votes of the current legislature are not counted as absences in the earlier mandate.
+    with db.connect(database_url) as conn:
+        assert analytics.members(conn, 2020)[0]["attendance"] is None
     # An unknown legislature falls back to the current one.
     assert "Legislatura 2024–2028" in client.get("/parlamentari?legislatura=1990").text
     old = client.get("/parlamentar/cd-2020-77").text

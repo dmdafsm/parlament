@@ -53,6 +53,12 @@ def test_tidy():
         "Proiectul propune scutirea de taxă pentru exemplu."
     )
     assert summaries.tidy("Nu știu.") is None
+    assert (
+        summaries.tidy(
+            "Proiectul propune un reprezentant al pacienților în consiliul spitalului. Asta ar putea ajuta pacienții."
+        )
+        == "Proiectul propune un reprezentant al pacienților în consiliul spitalului."
+    )
 
 
 def test_summarize(conn):

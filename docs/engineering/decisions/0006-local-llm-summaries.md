@@ -23,6 +23,7 @@ Observations from a sample of 8 bills (2026-10-28):
 - A hosted API (Claude) would be more accurate but costs per bill and sends texts to a third party; the maintainer declined it.
 - RoLlama3.1-8B-DPO (16 GB before conversion) would likely be more robust; it can replace the model by changing `PARLAMENT_LLM_LABEL` and re-running `summarize`. Summaries are keyed by model label, so a new model regenerates them all.
 - CC BY-NC 4.0 rules out commercial use of the summaries; the site is non-commercial. A commercial reuse of the open data must leave them out.
+- The model still speculated in about 4% of 1,017 summaries despite the prompt; `tidy` drops sentences with 'ar putea' / 'probabil'.
 - Errors remain possible, especially on poor OCR text. The label, the source link and the methodology section say so.
 
 ## Verification

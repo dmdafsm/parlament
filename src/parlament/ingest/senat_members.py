@@ -2,6 +2,7 @@
 
 senat.ro shows only the current party and group (no dated history) and loads detail lists through
 ASP.NET postbacks; we use the counters printed on the profile page and do not replay postbacks.
+Earlier legislatures are listed by choosing one in the list's filter form; each mandate has its own id.
 """
 
 import re
@@ -9,6 +10,7 @@ import re
 import psycopg
 
 from parlament import db
+from parlament.config import settings
 from parlament.fetch import Fetcher, FetchError
 from parlament.ingest.cdep_members import Profile, store_cv, store_history
 from parlament.parsing import ParseError, clean, fold, form_fields, html, node_text, parse_dotted_date, query_param
@@ -16,6 +18,8 @@ from parlament.parsing import ParseError, clean, fold, form_fields, html, node_t
 BASE = "https://www.senat.ro"
 SOURCE = "senat.ro"
 LIST_URL = f"{BASE}/FisaSenatori.aspx"
+LEGISLATURE_FIELD = "ctl00$B_Center$ddLegislatura"
+FILTER_BUTTON = "ctl00$B_Center$cmdSearch"
 
 # Sidebar link text -> metric. Values are the numbers in brackets, e.g. 'Întrebări (3)'.
 SIDEBAR = [
@@ -46,7 +50,9 @@ def constituency_name(name: str) -> str:
 def parse_senator_list(page: str) -> list[dict]:
     result, seen = [], set()
     # The page lists every senator twice (by group and alphabetically).
-    for card in html(page).css("div.new-card-without-pics"):
+    # Without photos the card has the name, birth date and constituency; with photos (the filtered list of an
+    # earlier legislature) only the name and the group, the rest comes from the profile.
+    for card in html(page).css("div.new-card-without-pics, div.new-card-with-pics div.card-details"):
         link = card.css_first("a")
         guid = query_param(link.attributes.get("href", ""), "ParlamentarID") if link else None
         if not guid or guid.lower() in seen:
@@ -68,6 +74,35 @@ def parse_senator_list(page: str) -> list[dict]:
     if not result:
         raise ParseError("senat.ro list: no senator cards found")
     return result
+
+
+def legislature_option(page: str, legislature: int) -> str:
+    """Value of the list filter's option for the legislature elected in `legislature`, e.g. '2020-2024'."""
+    for option in html(page).css(f'select[name="{LEGISLATURE_FIELD}"] option'):
+        if node_text(option).startswith(f"{legislature}-"):
+            return option.attributes.get("value") or ""
+    raise ParseError(f"senat.ro list: no legislature {legislature} in the filter")
+
+
+def senator_list(fetcher: Fetcher, legislature: int) -> str:
+    page = fetcher.get("senat", LIST_URL)
+    if legislature == settings().legislature:
+        return page
+    # Choosing the legislature reloads the form (its sessions); the filter button then lists its senators.
+    form = {**form_fields(page), LEGISLATURE_FIELD: legislature_option(page, legislature)}
+    page = fetcher.post(
+        "senat",
+        LIST_URL,
+        {**form, "__EVENTTARGET": LEGISLATURE_FIELD, "__EVENTARGUMENT": ""},
+        f"legislatura={legislature}",
+    )
+    form = {**form_fields(page), LEGISLATURE_FIELD: legislature_option(page, legislature)}
+    return fetcher.post(
+        "senat",
+        LIST_URL,
+        {**form, "__EVENTTARGET": FILTER_BUTTON, "__EVENTARGUMENT": ""},
+        f"legislatura={legislature}&filtru",
+    )
 
 
 def parse_senator_profile(page: str) -> Profile:
@@ -217,7 +252,7 @@ def store_senator(conn: psycopg.Connection, legislature: int, listed: dict, prof
             profile.mandate_end,
             profile.mandate_end_note,
             profile.email,
-            profile.mandate_end is None,
+            profile.mandate_end is None and legislature == settings().legislature,
         ),
     )
     # senat.ro group ids are GUIDs; store_history derives the same '<chamber>-<leg>-<id>' key.
@@ -298,7 +333,7 @@ def clean_tags(text: str) -> str:
 
 def ingest(conn: psycopg.Connection, fetcher: Fetcher, legislature: int, limit: int | None = None) -> int:
     log = db.log_start(conn, SOURCE, f"members senat {legislature}")
-    listed = parse_senator_list(fetcher.get("senat", LIST_URL))
+    listed = parse_senator_list(senator_list(fetcher, legislature))
     count, errors = 0, []
     for senator in listed[:limit] if limit else listed:
         try:

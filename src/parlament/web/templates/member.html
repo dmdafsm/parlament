@@ -10,7 +10,7 @@
     <h4 class="no-margin">{{ m.name }}</h4>
     <p class="no-margin">{{ m.chamber|role|capitalize }}{% if m.legislature != legislature %} în legislatura {{ m.legislature }}–{{ m.legislature + 4 }}{% endif %}{% if m.constituency %}, circumscripția {{ m.constituency_no }} {{ m.constituency }}{% elif d.minority_org %}, {{ d.minority_org }}{% endif %}</p>
     <nav class="wrap no-margin">
-      {% if m.group_name %}<a class="chip primary" href="/parlamentari?grup={{ m.group_short|urlencode }}{% if m.legislature != legislature %}&amp;legislatura={{ m.legislature }}{% endif %}"><i>groups</i><span>{{ m.group_name }}</span></a>{% endif %}
+      {% if m.group_name %}<a class="chip primary wrap-text" href="/parlamentari?grup={{ m.group_short|urlencode }}{% if m.legislature != legislature %}&amp;legislatura={{ m.legislature }}{% endif %}"><i>groups</i><span>{{ m.group_name }}</span></a>{% endif %}
       {% if d.party %}<span class="chip"><i>flag</i><span>{{ d.party_name or d.party }}</span></span>{% endif %}
       {% if not m.in_office and m.legislature == legislature %}<span class="chip error"><i>block</i><span>Mandat încetat {{ d.mandate_end|date_ro }}</span></span>{% endif %}
     </nav>

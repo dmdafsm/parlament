@@ -90,3 +90,39 @@ def test_store_link_and_attendance(conn):
         "SELECT bill_id FROM agenda_items WHERE agenda_id = 'senat-2025-06-24' ORDER BY seq"
     ).fetchall()
     assert [row["bill_id"] for row in agenda] == ["cd-22001", "senat-901"]
+
+
+class ListForms:
+    """Returns the list page for every request and records the postbacks."""
+
+    def __init__(self):
+        self.posts = []
+
+    def get(self, source, url, fresh=False):
+        return fixture("senat_list_2020.html")
+
+    def post(self, source, url, form, key, fresh=False):
+        self.posts.append((form["__EVENTTARGET"], form[senat_members.LEGISLATURE_FIELD], key))
+        return fixture("senat_list_2020.html")
+
+
+def test_list_of_an_earlier_legislature():
+    page = fixture("senat_list_2020.html")
+    assert senat_members.legislature_option(page, 2016) == "11111111-0000-0000-0000-000000002016"
+    # Cards with photos: the name and the group only; each mandate has its own id.
+    assert [
+        (s["guid"][:8], s["sort_name"], s["group_name"], s["constituency"])
+        for s in senat_members.parse_senator_list(page)
+    ] == [
+        ("cccccccc", "FLOREA Ioana-Maria", "Partidul Național Liberal", None),
+        ("dddddddd", "GHEORGHE Radu", "Partidul Social Democrat", None),
+    ]
+    fetcher = ListForms()
+    senat_members.senator_list(fetcher, 2020)
+    assert fetcher.posts == [
+        (senat_members.LEGISLATURE_FIELD, "11111111-0000-0000-0000-000000002020", "legislatura=2020"),
+        (senat_members.FILTER_BUTTON, "11111111-0000-0000-0000-000000002020", "legislatura=2020&filtru"),
+    ]
+    fetcher = ListForms()
+    senat_members.senator_list(fetcher, 2024)  # the current legislature is the plain list
+    assert fetcher.posts == []

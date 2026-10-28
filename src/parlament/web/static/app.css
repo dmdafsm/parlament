@@ -58,3 +58,5 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
 /* Generated plain-language summary of a bill: set apart from the official data. */
 .summary { background: var(--secondary-container); color: var(--on-secondary-container); margin-block: 1rem; }
 .summary h6 { display: flex; align-items: center; gap: 0.5rem; margin-top: 0; }
+/* Long group names ("Grupul parlamentar al Partidului ...") wrap inside the chip on a phone. */
+.chip.wrap-text { max-inline-size: 100%; block-size: auto; min-block-size: 2rem; white-space: normal; text-align: start; padding-block: 0.25rem; }
