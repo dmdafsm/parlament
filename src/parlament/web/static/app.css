@@ -60,3 +60,11 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
 .summary h6 { display: flex; align-items: center; gap: 0.5rem; margin-top: 0; }
 /* Long group names ("Grupul parlamentar al Partidului ...") wrap inside the chip on a phone. */
 .chip.wrap-text { max-inline-size: 100%; block-size: auto; min-block-size: 2rem; white-space: normal; text-align: start; padding-block: 0.25rem; }
+/* The profile heading: the text column may shrink next to the photo, long names and emails wrap. */
+.member-head > .max { min-inline-size: 0; }
+.member-head .chip { max-inline-size: 100%; }
+.member-head .chip span { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) {
+  .member-head { --_margin: 0.5rem 0; }
+  .member-head h4 { font-size: 1.6rem; overflow-wrap: break-word; }
+}

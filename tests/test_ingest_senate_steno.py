@@ -52,7 +52,7 @@ def test_ingest_links_senators_and_search(conn, monkeypatch):
     # Sittings before the legislature (18 Nov 2024) are skipped; the joint sitting and the Senate sitting are kept.
     assert senat_steno.ingest(conn, fetcher, 2024) == 2
     assert fetcher.years[0] == "2024"
-    texts = analytics.search(conn, "spitalelor ambulanta")["texts"]
+    texts = analytics.search(conn, "spitalelor ambulanta", 2024)["texts"]
     assert {(t["url"], t["chamber"], t["member_id"]) for t in texts} >= {(PDF, "senat", SENATOR)}
     # Stored stenograms are not fetched again.
     assert senat_steno.ingest(conn, Calendar(), 2024) == 0

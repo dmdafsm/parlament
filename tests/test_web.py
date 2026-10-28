@@ -132,7 +132,7 @@ def test_bill_summary(client, database_url):
     assert "Pe înțelesul tuturor" not in client.get("/lege/cd-22001").text
 
 
-def test_previous_legislature(client, database_url):
+def test_earlier_mandates(client, database_url):
     with db.connect(database_url) as conn, conn.transaction():
         # The same person as deputy 3 (Cernat Vlad), in the 2020 legislature under another id.
         profile = Profile(name="Cernat Vlad", validated_on=dt.date(2020, 12, 21))
@@ -140,16 +140,13 @@ def test_previous_legislature(client, database_url):
         cdep_members.store_deputy(
             conn, 2020, ListedDeputy("77", "Cernat Vlad", 1, "Alba", "9", "Grupul vechi"), profile, "https://e.invalid"
         )
-    page = client.get("/parlamentari?legislatura=2020").text
-    assert "Legislatura 2020–2024" in page and "Legislatură încheiată" in page
-    assert "/parlamentar/cd-2020-77" in page and "/parlamentar/cd-2024-3" not in page
-    # Every mandate of an ended legislature has ended: no "former" filter or label.
-    assert "mandat încetat" not in page and 'name="fosti"' not in page
+    # Earlier legislatures are collected only for "other mandates": not listed and not searched.
+    page = client.get("/parlamentari").text
+    assert "/parlamentar/cd-2024-3" in page and "cd-2020-77" not in page
+    assert "cd-2020-77" not in client.get("/cauta?q=Cernat").text
+    # The current profile links the earlier mandate to its official page.
+    current = client.get("/parlamentar/cd-2024-3").text
+    assert 'href="https://e.invalid"' in current and "deputat 2020–2024" in current
     # The votes of the current legislature are not counted as absences in the earlier mandate.
     with db.connect(database_url) as conn:
         assert analytics.members(conn, 2020)[0]["attendance"] is None
-    # An unknown legislature falls back to the current one.
-    assert "Legislatura 2024–2028" in client.get("/parlamentari?legislatura=1990").text
-    old = client.get("/parlamentar/cd-2020-77").text
-    assert "în legislatura 2020–2024" in old and 'href="/parlamentar/cd-2024-3"' in old
-    assert 'href="/parlamentar/cd-2020-77"' in client.get("/parlamentar/cd-2024-3").text

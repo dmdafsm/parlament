@@ -164,16 +164,12 @@ def members(
     return conn.execute(sql, params).fetchall()
 
 
-def legislatures(conn: psycopg.Connection) -> list[int]:
-    """Legislatures with MPs in the database, newest first."""
-    return [row["legislature"] for row in conn.execute("SELECT DISTINCT legislature FROM members ORDER BY 1 DESC")]
-
-
 def mandates(conn: psycopg.Connection, member_id: str) -> list[dict]:
     """The same person's mandates in other legislatures or the other chamber: same name (folded), and same birth
-    date when both records have one. Ids differ between legislatures, so the name is the only common key."""
+    date when both records have one. Ids differ between legislatures, so the name is the only common key.
+    MPs of earlier legislatures are collected only for this list; their pages link to the official profile."""
     return conn.execute(
-        """SELECT o.id, o.chamber, o.legislature FROM members m JOIN members o
+        """SELECT o.id, o.chamber, o.legislature, o.party, o.url FROM members m JOIN members o
                ON o.id <> m.id AND lower(f_unaccent(o.sort_name)) = lower(f_unaccent(m.sort_name))
                   AND (o.birth_date IS NULL OR m.birth_date IS NULL OR o.birth_date = m.birth_date)
            WHERE m.id = %s ORDER BY o.legislature DESC, o.chamber""",
@@ -389,13 +385,13 @@ def snippet(text: str, query: str, words: int = 14) -> list[tuple[str, bool]]:
     return pieces
 
 
-def search(conn: psycopg.Connection, query: str, limit: int = 20) -> dict[str, list[dict]]:
-    params = {"q": ts_query(query) or "''", "like": f"%{query.strip()}%", "limit": limit}
+def search(conn: psycopg.Connection, query: str, legislature: int, limit: int = 20) -> dict[str, list[dict]]:
+    params = {"q": ts_query(query) or "''", "like": f"%{query.strip()}%", "limit": limit, "legislature": legislature}
     return {
         "members": conn.execute(
             """SELECT id, name, chamber, party, constituency FROM members
-               WHERE f_unaccent(name) ILIKE f_unaccent(%(like)s) ORDER BY in_office DESC, legislature DESC,
-                   sort_name LIMIT %(limit)s""",
+               WHERE f_unaccent(name) ILIKE f_unaccent(%(like)s) AND legislature = %(legislature)s
+               ORDER BY in_office DESC, sort_name LIMIT %(limit)s""",
             params,
         ).fetchall(),
         "bills": conn.execute(

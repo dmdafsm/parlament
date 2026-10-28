@@ -10,7 +10,7 @@
   <tbody>
   {% for m in rows %}
   <tr>
-    <td><a href="/parlamentar/{{ m.id }}" class="row no-space"><img class="avatar" src="/foto/{{ m.id }}" alt="" loading="lazy" referrerpolicy="no-referrer"><span class="small-padding"><span class="bold">{{ m.name }}</span><br><span class="small-text muted">{{ m.chamber|role }}{% if not m.in_office and m.legislature == legislatures[0] %} · mandat încetat{% endif %}{% if m.group_changes or m.party_changes %} · <i class="small">swap_horiz</i>{% endif %}</span></span></a></td>
+    <td><a href="/parlamentar/{{ m.id }}" class="row no-space"><img class="avatar" src="/foto/{{ m.id }}" alt="" loading="lazy" referrerpolicy="no-referrer"><span class="small-padding"><span class="bold">{{ m.name }}</span><br><span class="small-text muted">{{ m.chamber|role }}{% if not m.in_office %} · mandat încetat{% endif %}{% if m.group_changes or m.party_changes %} · <i class="small">swap_horiz</i>{% endif %}</span></span></a></td>
     <td class="hide-s">{% if m.group_short %}<a class="link" href="/parlamentari?grup={{ m.group_short|urlencode }}">{{ m.group_short }}</a>{% else %}–{% endif %}</td>
     <td class="hide-s">{{ m.constituency or ('Minorități' if m.minority_org else '–') }}</td>
     <td style="min-width:9rem">{{ bar(m.attendance, warn=(m.attendance is not none and m.attendance < 0.7)) }}</td>
