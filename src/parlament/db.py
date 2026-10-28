@@ -58,3 +58,12 @@ def log_end(conn: psycopg.Connection, log_id: int, status: str, rows: int, error
         (status, rows, error, log_id),
     )
     conn.commit()
+
+
+def close_running(conn: psycopg.Connection, status: str, error: str) -> None:
+    """Mark runs interrupted by an abort (for example a bot check) so they do not stay 'running'."""
+    conn.rollback()
+    conn.execute(
+        "UPDATE ingest_log SET finished_at = now(), status = %s, error = %s WHERE status = 'running'", (status, error)
+    )
+    conn.commit()

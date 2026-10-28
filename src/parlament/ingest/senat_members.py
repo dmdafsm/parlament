@@ -37,6 +37,12 @@ def profile_url(guid: str) -> str:
     return f"{BASE}/FisaSenator.aspx?ParlamentarID={guid.lower()}"
 
 
+def constituency_name(name: str) -> str:
+    """Constituency 43 is printed as 'Circumscripția electorală pentru românii cu domiciliul în afara României'."""
+    name = name.strip(" -")
+    return "Diaspora" if "afara" in name.lower() else name
+
+
 def parse_senator_list(page: str) -> list[dict]:
     result, seen = [], set()
     # The page lists every senator twice (by group and alphabetically).
@@ -55,7 +61,7 @@ def parse_senator_list(page: str) -> list[dict]:
                 "sort_name": node_text(link),
                 "birth_date": parse_dotted_date(next((line for line in lines if "nasterii" in line), "")),
                 "constituency_no": int(match.group(1)) if match else None,
-                "constituency": match.group(2).strip() if match else None,
+                "constituency": constituency_name(match.group(2)) if match else None,
                 "group_name": lines[-1] if lines else None,
             }
         )
@@ -82,7 +88,7 @@ def parse_senator_profile(page: str) -> Profile:
         profile.elected_note = note
         match = re.search(r"nr\.\s*(\d+)\s+(.+?)\s+în data", note)
         if match:
-            profile.constituency_no, profile.constituency = int(match.group(1)), match.group(2)
+            profile.constituency_no, profile.constituency = int(match.group(1)), constituency_name(match.group(2))
         validated = re.search(r"validat în data de\s*([\d.]+)", note)
         profile.validated_on = parse_dotted_date(validated.group(1)) if validated else None
         ended = re.search(r"(?:încetat|incetat)\w*[^\d]*([\d.]+)", note, re.IGNORECASE)

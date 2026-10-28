@@ -17,7 +17,7 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 
 ## Phases
 
-- **P0 — Repo and sources** (done): scaffold and guardrails from bvb-research, ADRs 0001–0005, source research ([surse-date.md](surse-date.md)). cdep.ro was unreachable from the development network; structures verified on archived copies.
+- **P0 — Repo and sources** (done): scaffold and guardrails from bvb-research, ADRs 0001–0005, source research ([surse-date.md](surse-date.md)). Collectors verified on the live sites (cdep.ro under `/ords/`, 2025 profile layout).
 - **P1 — MPs** (done): deputies (cdep.ro) and senators (senat.ro): profile, photo cache, group/party history, roles, committees, counters; list with grouping, filters, sorting; profile page.
 - **P2 — Bills and agenda** (done): bill details, initiators, documents, procedure timeline; Chamber agenda; links between bills, votes and agenda items.
 - **P3 — Votes and attendance** (done for the Chamber): daily and nominal votes, attendance within the mandate, party-line voting, votes against the group, absent list per vote; senators: session attendance as published.
@@ -27,7 +27,7 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 
 ## Next
 
-1. Run the full collection live from a network that reaches cdep.ro; spot-check counts against the site (331 deputies, today's votes, a bill timeline).
+1. Backfill votes for the whole legislature (`parlament ingest votes --from 2024-12-21`) and schedule it in production.
 2. Senate nominal votes: replay `Voturiplen.aspx` postbacks (calendar day → vote list → nominal), store in `votes`/`vote_records` with `chamber = 'senat'`.
 3. Speeches: index stenogram text for full-text search.
 4. Use the official XML vote export (`evot2015.xml`) instead of HTML where it is complete.

@@ -57,3 +57,35 @@ def test_member_refs():
     assert member_ref_from_url("/pls/parlam/structura2015.mp?idm=273&leg=2020&cam=2") == "cd-2020-273"
     assert member_ref_from_url("/pls/parlam/structura2015.mp?idm=57&leg=2020&cam=1") == "senat-2020-57"
     assert member_ref_from_url("/pls/parlam/structura2015.gp?idg=1") is None
+
+
+def test_bot_check_pages_are_recognised():
+    from parlament.fetch import is_bot_check
+
+    captcha = b"<html><body><form><p>Security check</p><img src='c.png'> Please enter the above result. Captcha Result:"
+    assert is_bot_check(captcha)
+    assert not is_bot_check(b"<html><h1>PL-x nr. 1/2026</h1><p>Captcha mentioned in a bill title</p>")
+    # The cdep.ro firewall challenge has its own heading.
+    firewall = (
+        b"<html><body><form><h1 style='x'>Firewall Captcha Authentication</h1><p>Security check</p>Captcha Result:"
+    )
+    assert is_bot_check(firewall)
+
+
+def test_offline_mode_reads_only_the_raw_cache(tmp_path):
+    import dataclasses
+
+    import pytest
+
+    from parlament.config import settings
+    from parlament.fetch import Fetcher, FetchError
+
+    conf = dataclasses.replace(settings(), data_dir=tmp_path, fetch_mode="offline", request_delay=0)
+    with Fetcher(conf, use_cache=True) as fetcher:
+        url = "https://www.cdep.ro/ords/pls/parlam/structura2015.de?idl=1"
+        path = fetcher.cache_path("cdep", url)
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"<html><h1>ok</h1></html>")
+        assert "ok" in fetcher.get("cdep", url)
+        with pytest.raises(FetchError, match="offline"):
+            fetcher.get("cdep", url + "&x=1")

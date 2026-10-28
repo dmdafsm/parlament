@@ -50,8 +50,8 @@ def test_votes_and_agenda_link_to_bills(conn):
     assert conn.execute("SELECT bill_id FROM votes WHERE id = 'cd-40001'").fetchone()["bill_id"] is None
     # The agenda was stored before the bill: relink attaches its item afterwards.
     cdep_bills.relink(conn)
-    items = conn.execute("SELECT bill_ref, bill_id FROM agenda_items ORDER BY seq").fetchall()
-    assert items[0]["bill_id"] == "cd-22001" and items[1]["bill_id"] is None
+    items = {row["bill_ref"]: row["bill_id"] for row in conn.execute("SELECT bill_ref, bill_id FROM agenda_items")}
+    assert items == {"PHCD 72/2026": None, "PL-x 501/2025": "cd-22001", "Pl-x 7/2025": None}
 
 
 def test_senator_initiators_are_matched_by_name(conn):

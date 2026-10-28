@@ -11,14 +11,14 @@ import psycopg
 
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
-from parlament.ingest.cdep_members import BASE, absolute
+from parlament.ingest.cdep_members import SITE, absolute
 from parlament.parsing import ParseError, html, node_text, parse_dotted_date, parse_long_date, query_param
 
 SOURCE = "cdep.ro"
 
 
 def subpage_url(idm: str, legislature: int, page: int) -> str:
-    return f"{BASE}/pls/parlam/structura2015.mp?idm={idm}&cam=2&leg={legislature}&pag={page}&idl=1&prn=0&par="
+    return f"{SITE}/pls/parlam/structura2015.mp?idm={idm}&cam=2&leg={legislature}&pag={page}&idl=1&prn=0&par="
 
 
 def parse_initiatives(page: str) -> list[dict]:
@@ -44,7 +44,7 @@ def parse_questions(page: str) -> list[dict]:
         if link is None or "interpelari2015.detalii" not in link.attributes.get("href", ""):
             continue
         label = node_text(link)
-        match = re.match(r"(Întrebarea|Interpelarea)\s+nr\.\s*(\S+?)\s*/\s*([\d-]+)", label)
+        match = re.match(r"(Întrebarea|Interpelarea)\s+nr\.\s*(\S+?)\s*/\s*([\d.-]+)", label)
         cell_text = node_text(row.css("td")[-1])
         title = cell_text[len(label) :].strip() if cell_text.startswith(label) else cell_text
         href = link.attributes["href"]
@@ -55,7 +55,7 @@ def parse_questions(page: str) -> list[dict]:
                 "number": match.group(2) if match else None,
                 "asked_on": parse_dotted_date(match.group(3)) if match else None,
                 "title": title or None,
-                "url": absolute(href if href.startswith("/") else "/pls/parlam/" + href),
+                "url": absolute(href if href.startswith("/") else "/ords/pls/parlam/" + href),
             }
         )
     return result

@@ -12,7 +12,7 @@ import traceback
 
 from parlament import db, exports
 from parlament.config import settings
-from parlament.fetch import Fetcher
+from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import cdep_activity, cdep_agenda, cdep_bills, cdep_members, cdep_votes, senat_members
 
 log = logging.getLogger("parlament.scheduler")
@@ -66,6 +66,10 @@ def run(once: bool = False) -> None:
                 with db.connect() as conn, Fetcher() as fetcher:
                     {"daily": daily, "weekly": weekly}[job](conn, fetcher)
                 log.info("done %s", job)
+            except BlockedError as error:  # a bot check: stop this job, try again at the next scheduled run
+                log.error("job %s stopped: %s", job, error)
+                with db.connect() as conn:
+                    db.close_running(conn, "blocked", str(error))
             except Exception:  # keep the loop alive; the failure is logged and in ingest_log
                 log.error("job %s failed:\n%s", job, traceback.format_exc())
             last[job] = now.date()

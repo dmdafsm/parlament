@@ -102,3 +102,41 @@ def test_store_senator(conn):
         mid = senat_members.store_senator(conn, 2024, listed, profile)
     row = conn.execute("SELECT m.*, g.short_name FROM members m JOIN parl_groups g ON g.id = m.group_id").fetchone()
     assert mid == row["id"] and row["short_name"] == "PNL" and row["birth_date"] == dt.date(1984, 7, 23)
+
+
+def test_deputy_profile_2025_layout():
+    profile = cdep_members.parse_profile(fixture("cdep_profile_2025.html"))
+    assert profile.name == "Dana GEORGESCU" and profile.birth_date == dt.date(1970, 8, 15)
+    assert profile.photo_url == "https://www.cdep.ro/parlamentari/l2024/GeorgescuDana.JPG"
+    assert (profile.constituency_no, profile.constituency, profile.validated_on) == (
+        35,
+        "Suceava",
+        dt.date(2024, 12, 21),
+    )
+    # The 2025 layout shows the party by full name only.
+    assert profile.parties == [{"party": "PSD", "party_name": "Partidul Social Democrat", "start": None, "end": None}]
+    assert profile.groups[0]["group_source_id"] == "1"
+    assert profile.roles[0]["role"] == "Vicelider" and profile.roles[0]["start"] == dt.date(2025, 2, 1)
+    # Friendship groups are not committees.
+    assert [(c["source_id"], c["role"]) for c in profile.committees] == [("5", None), ("7", "Secretar")]
+    assert {k: v[0] for k, v in profile.stats.items()} == {
+        "speeches": 25, "speech_sessions": 21, "political_statements": 8, "bills": 59, "laws": 15,
+        "questions": 7, "motions": 1,
+    }  # fmt: skip
+    # The Standing Bureau line ("Luări de cuvânt în BP") must not replace the plenary speeches.
+    assert profile.stats["speeches"][1].startswith("https://www.cdep.ro/ords/pls/steno/steno2015.lista")
+    assert profile.stats["bills"][1].startswith("https://www.cdep.ro/ords/pls/parlam/structura2015.mp?idm=9")
+    assert profile.offices == "Suceava, Str. Exemplului nr. 2; Vatra Dornei, Str. Exemplu nr. 4"
+
+
+def test_diaspora_constituency_name():
+    profile = cdep_members.Profile(name="x")
+    cdep_members._parse_elected(
+        profile,
+        "ales deputat în circumscriptia electorala nr.43 - Circumscriptia electorala pentru cetatenii români cu "
+        "domiciliul în afara tarii data validării: 21 decembrie 2024 - HCD",
+    )
+    assert (profile.constituency_no, profile.constituency) == (43, "Diaspora")
+    assert senat_members.constituency_name(
+        "Circumscripția electorală pentru românii cu domiciliul în afara României"
+    ) == ("Diaspora")

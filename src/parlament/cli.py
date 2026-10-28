@@ -1,12 +1,13 @@
 """Command line: database setup, collection from the official sites, scheduler and web server."""
 
 import datetime as dt
+from contextlib import contextmanager
 
 import typer
 
 from parlament import db
 from parlament.config import settings
-from parlament.fetch import Fetcher
+from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import cdep_activity, cdep_agenda, cdep_bills, cdep_members, cdep_votes, senat_members
 
 app = typer.Typer(help="Parlamentul României pe înțelesul tuturor: colectare date și site.", no_args_is_help=True)
@@ -14,6 +15,18 @@ ingest_app = typer.Typer(help="Colectează date de pe cdep.ro și senat.ro.", no
 app.add_typer(ingest_app, name="ingest")
 
 CacheOption = typer.Option(False, "--from-raw", help="Refoloseste paginile salvate in data/raw (fara descarcare).")
+
+
+@contextmanager
+def collecting(from_raw: bool = False):
+    """Database connection and fetcher for one collection command; a bot check aborts the command cleanly."""
+    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+        try:
+            yield conn, fetcher
+        except BlockedError as error:
+            db.close_running(conn, "blocked", str(error))
+            typer.echo(f"OPRIT: {error}", err=True)
+            raise typer.Exit(2) from error
 
 
 def _date(value: str) -> dt.date:
@@ -37,7 +50,7 @@ def ingest_members(
 ) -> None:
     """Parlamentari: profil, grup, partid, comisii, contoare de activitate."""
     leg = legislature or settings().legislature
-    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+    with collecting(from_raw) as (conn, fetcher):
         if chamber in ("cd", "all"):
             typer.echo(f"Deputati: {cdep_members.ingest(conn, fetcher, leg, limit)}")
         if chamber in ("senat", "all"):
@@ -53,7 +66,7 @@ def ingest_activity(
 ) -> None:
     """Deputati: initiative, intrebari, motiuni, luari de cuvant."""
     leg = legislature or settings().legislature
-    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+    with collecting(from_raw) as (conn, fetcher):
         count, idps = cdep_activity.ingest(conn, fetcher, leg, limit)
         typer.echo(f"Activitate: {count} deputati, {len(set(idps))} proiecte gasite")
         if with_bills and idps:
@@ -68,7 +81,7 @@ def ingest_bills(
     from_raw: bool = CacheOption,
 ) -> None:
     """Proiecte legislative: detalii, initiatori, documente, parcurs."""
-    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+    with collecting(from_raw) as (conn, fetcher):
         ids = list(idp or [])
         if refresh:
             ids += [
@@ -94,7 +107,7 @@ def ingest_votes(
     last = _date(end) if end else dt.date.today()
     first = _date(start) if start else last - dt.timedelta(days=days)
     selected = [None] if latest else cdep_votes.sitting_days(first, last)
-    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+    with collecting(from_raw) as (conn, fetcher):
         count = cdep_votes.ingest_days(conn, fetcher, selected, nominal)
         typer.echo(f"Voturi: {count} ({'ultima sedinta' if latest else f'{first} - {last}'})")
         cdep_bills.relink(conn)
@@ -107,7 +120,7 @@ def ingest_agenda(
 ) -> None:
     """Ordinea de zi a plenului Camerei Deputatilor (si proiectele de pe ea)."""
     days = [_date(day) for day in date] if date else [None]
-    with db.connect() as conn, Fetcher(use_cache=from_raw) as fetcher:
+    with collecting(from_raw) as (conn, fetcher):
         count, idps = cdep_agenda.ingest(conn, fetcher, days)
         typer.echo(f"Ordini de zi: {count}")
         if idps:
@@ -120,7 +133,7 @@ def ingest_photos(refresh: bool = typer.Option(False, help="Descarca din nou toa
     """Fotografiile oficiale, redimensionate (128px si 480px)."""
     from parlament.ingest import photos
 
-    with db.connect() as conn, Fetcher() as fetcher:
+    with collecting() as (conn, fetcher):
         typer.echo(f"Fotografii: {photos.ingest(conn, fetcher, refresh)}")
 
 
