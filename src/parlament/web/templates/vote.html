@@ -2,7 +2,7 @@
 {% from "macros.html" import split %}
 {% block title %}Vot: {{ v.description[:80] }}{% endblock %}
 {% block content %}
-<p class="small-text muted no-margin">{{ v.chamber|chamber }} · {{ v.voted_at|date_ro(true) }}</p>
+<p class="small-text muted no-margin">{{ v.chamber|chamber }} · {{ v.voted_at|date_ro(true) }}{% if v.result %} · <b>{{ v.result }}</b>{% endif %}</p>
 <h5 class="page-title">{{ v.description }}</h5>
 {% if bill %}<p><a class="chip primary" href="/lege/{{ bill.id }}"><i>gavel</i><span>{{ bill.number }} – {{ bill.title[:90] }}</span></a></p>{% endif %}
 <div class="grid">
@@ -22,7 +22,7 @@
   <div class="s12 m6 l4 row small-padding"><span class="choice {{ r.choice|choice_class }}">{{ r.choice|choice }}</span>{% if r.profile %}<a class="link" href="/parlamentar/{{ r.profile }}">{{ r.name }}</a>{% else %}{{ r.name }}{% endif %}<span class="small-text muted">{{ r.group_code }}</span></div>
 {% endfor %}</div>
 {% if absent %}<details><summary class="section-label bold">Nu figurează ca prezenți ({{ absent|length }})</summary>
-<p class="small-text muted">Deputați în funcție la data votului care nu apar în lista nominală (absenți, în concediu, în delegație sau la alte activități – sursa nu precizează motivul).</p>
+<p class="small-text muted">{{ 'Deputați' if v.chamber == 'cd' else 'Senatori' }} în funcție la data votului care nu apar ca prezenți în lista nominală (absenți, în concediu, în delegație sau la alte activități – sursa nu precizează motivul).</p>
 <p>{% for a in absent %}<a class="link" href="/parlamentar/{{ a.id }}">{{ a.name }}</a>{% if a.group_short %} <span class="muted small-text">({{ a.group_short }})</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p></details>{% endif %}
 {% else %}<p class="muted">Votul nominal nu a fost colectat pentru acest vot.</p>{% endif %}
 {% endblock %}

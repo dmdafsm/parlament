@@ -6,16 +6,17 @@
 <p>Toate datele vin automat din paginile publice ale <a class="link" href="https://www.cdep.ro">Camerei Deputaților</a> și <a class="link" href="https://www.senat.ro">Senatului</a>. Nu modificăm și nu completăm manual date; fiecare pagină trimite la sursa oficială. Dacă observi o eroare, verifică sursa și <a class="link" href="https://github.com/dmdafsm/parlament/issues">deschide o problemă</a>.</p>
 <h5 id="indicatori">Indicatori</h5>
 <ul>
-  <li><b>Prezența la vot – deputați</b>: din voturile electronice nominale (fără voturile de test) ținute cât deputatul a fost în funcție, procentul în care apare în lista nominală. Lista oficială cuprinde doar deputații prezenți; nu știm motivul absenței (concediu medical, delegație, activitate în comisii etc.).</li>
-  <li><b>Prezența la vot – senatori</b>: numărul de ședințe cu vot electronic la care senatorul a votat, din totalul ședințelor, așa cum îl afișează senat.ro pe profil. Este o măsură pe ședințe, nu pe voturi, deci nu e direct comparabilă cu cea a deputaților.</li>
-  <li><b>Vot la fel ca grupul</b>: la fiecare vot, opțiunea majoritară (peste jumătate) a membrilor prezenți ai grupului, după grupul tipărit pe lista nominală. Contează doar voturile „pentru”, „contra” și „abținere”; deputații neafiliați nu au linie de grup.</li>
+  <li><b>Prezența la vot</b>: din voturile electronice nominale (fără voturile de test) ținute cât parlamentarul a fost în funcție, procentul în care apare ca prezent în lista nominală. Camera listează doar deputații prezenți; Senatul listează senatorii înregistrați la vot, iar un rând fără nicio opțiune bifată nu este numărat ca prezent (la fel face și Senatul în totalul „Prezenți”). Nu știm motivul absenței (concediu medical, delegație, activitate în comisii etc.). Dacă pentru un senator nu avem încă niciun vot nominal, afișăm numărul de ședințe publicat pe profilul de pe senat.ro.</li>
+  <li><b>Vot la fel ca grupul</b>: la fiecare vot, opțiunea majoritară (peste jumătate) a membrilor prezenți ai grupului, după grupul tipărit pe lista nominală. Contează doar voturile „pentru”, „contra” și „abținere”; parlamentarii neafiliați nu au linie de grup.</li>
   <li><b>Luări de cuvânt, inițiative, întrebări, moțiuni</b>: contoarele publicate pe profilul oficial. La deputați, „luări de cuvânt” numără punctele din sumarul ședințelor la care a vorbit.</li>
   <li><b>Schimbări de grup și partid</b>: istoricul publicat pe profilul de pe cdep.ro, cu precizie de lună. senat.ro nu publică istoricul.</li>
   <li><b>Stadiul proiectelor</b>: derivat din textul „Stadiu” al fișei oficiale (lege, respins, retras/clasat, la promulgare, la CCR, în dezbatere).</li>
 </ul>
 <h5>Limitări cunoscute</h5>
 <ul>
-  <li>Senatul publică votul nominal prin pagini interactive (ASP.NET); încă nu îl preluăm. Pentru senatori afișăm prezența agregată.</li>
+  <li>Senatul nu publică ora voturilor, doar ziua și ordinea lor; la voturile Senatului afișăm doar data.</li>
+  <li>Un proiect care trece prin ambele camere are o singură pagină aici, cea de pe cdep.ro, cu parcursul de la Senat atașat. Proiectele care nu ajung la Cameră au pagina lor, preluată de pe senat.ro.</li>
+  <li>CV-urile sunt preluate așa cum le publică fiecare cameră, fără verificare sau corectură.</li>
   <li>Declarațiile de avere și interese sunt documente scanate; le legăm, nu le extragem conținutul.</li>
   <li>Luările de cuvânt sunt indexate după tema punctului din sumar, nu după textul integral al stenogramei.</li>
 </ul>

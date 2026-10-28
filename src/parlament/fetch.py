@@ -62,19 +62,31 @@ class Fetcher:
         digest = hashlib.sha256(url.encode()).hexdigest()[:24]
         return self.conf.data_dir / "raw" / source / f"{digest}.html"
 
-    def get(self, source: str, url: str, encoding: str | None = None) -> str:
-        """Download `url` (or reuse the raw copy with use_cache) and return decoded text."""
-        path = self.cache_path(source, url)
-        if self.use_cache and path.exists():
+    def get(self, source: str, url: str, encoding: str | None = None, fresh: bool = False) -> str:
+        """Download `url` (or reuse the raw copy with use_cache, unless `fresh`) and return decoded text."""
+        return self._fetch(source, url, url, encoding, fresh=fresh)
+
+    def post(self, source: str, url: str, form: dict[str, str], key: str, fresh: bool = False) -> str:
+        """Submit a page's own form (ASP.NET postback), as a browser does when a link on it is clicked.
+        `key` names the action (e.g. 'day=2026-10-26') and identifies the raw copy, since the form state varies."""
+        return self._fetch(source, url, f"{url}#{key}", None, form, fresh)
+
+    def _fetch(
+        self, source: str, url: str, cache_key: str, encoding: str | None, form: dict | None = None, fresh: bool = False
+    ) -> str:
+        path = self.cache_path(source, cache_key)
+        if self.use_cache and not fresh and path.exists():
             return decode(path.read_bytes(), encoding)
         if self.conf.fetch_mode == "offline":
-            raise FetchError(f"{url}: not in the raw cache (offline mode)")
+            raise FetchError(f"{cache_key}: not in the raw cache (offline mode)")
+        if form is not None and self.conf.fetch_mode == "wayback":
+            raise FetchError(f"{cache_key}: form posts are not archived")
         target = WAYBACK + url if self.conf.fetch_mode == "wayback" else url
         wait = self.conf.request_delay - (time.monotonic() - self._last)
         if wait > 0:
             time.sleep(wait)
         try:
-            response = self.client.get(target)
+            response = self.client.get(target) if form is None else self.client.post(target, data=form)
         except httpx.HTTPError as error:
             raise FetchError(f"{url}: {error}") from error
         finally:

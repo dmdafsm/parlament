@@ -76,3 +76,15 @@ def slug(text: str) -> str:
 def fold(text: str) -> str:
     """Accent- and case-insensitive key for matching names across sources."""
     return slug(text).replace("-", " ")
+
+
+def form_fields(page: str, leave_out: tuple[str, ...] = ()) -> dict[str, str]:
+    """Hidden and text fields of an ASP.NET page's form, to submit it as the browser does on a postback link."""
+    fields = {}
+    for node in html(page).css("input"):
+        name = node.attributes.get("name")
+        if name and node.attributes.get("type") in ("hidden", "text") and name not in leave_out:
+            fields[name] = node.attributes.get("value") or ""
+    if "__VIEWSTATE" not in fields:
+        raise ParseError("no ASP.NET form state on the page")
+    return fields

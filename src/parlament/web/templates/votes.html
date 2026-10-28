@@ -2,9 +2,15 @@
 {% block title %}Voturi în plen{% endblock %}
 {% block content %}
 <h4 class="page-title">Voturi în plen</h4>
-<p class="muted">Voturile electronice ale Camerei Deputaților, cu rezultatul nominal. Senatul nu publică încă votul nominal într-o formă pe care o putem prelua; vezi <a class="link" href="/metodologie">metodologia</a>.</p>
-<form action="/voturi" method="get" hx-get="/voturi" hx-target="#results" hx-push-url="true" hx-trigger="input from:#q delay:500ms, submit">
-  <div class="field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Caută în subiectul votului</label></div>
+<p class="muted">Voturile electronice din plenul Camerei Deputaților și al Senatului, cu rezultatul nominal. Vezi <a class="link" href="/metodologie">metodologia</a>.</p>
+<form action="/voturi" method="get" hx-get="/voturi" hx-target="#results" hx-push-url="true" hx-trigger="input from:#q delay:500ms, change, submit">
+  <div class="grid">
+    <div class="s12 m8 field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Caută în subiectul votului</label></div>
+    <div class="s12 m4 field label suffix border small">
+      <select name="camera" id="camera"><option value="" {{ 'selected' if not params.camera }}>Ambele camere</option><option value="cd" {{ 'selected' if params.camera == 'cd' }}>Camera Deputaților</option><option value="senat" {{ 'selected' if params.camera == 'senat' }}>Senat</option></select>
+      <label for="camera">Camera</label><i>arrow_drop_down</i>
+    </div>
+  </div>
 </form>
 <div id="results">{% include "_votes_results.html" %}</div>
 {% endblock %}

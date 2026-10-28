@@ -17,11 +17,12 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 
 | Module | Tables written |
 | --- | --- |
-| `ingest/cdep_members.py`, `ingest/senat_members.py` | `members`, `parl_groups`, `group_memberships`, `party_memberships`, `group_roles`, `committees`, `committee_memberships`, `member_stats` |
+| `ingest/cdep_members.py`, `ingest/senat_members.py` | `members` (incl. `cv`), `parl_groups`, `group_memberships`, `party_memberships`, `group_roles`, `committees`, `committee_memberships`, `member_stats` |
 | `ingest/cdep_activity.py` | `questions`, `speeches`, `motions`, `motion_signatures`, `declarations` |
 | `ingest/cdep_bills.py` | `bills`, `bill_initiators`, `bill_events`, `bill_documents`; links `votes.bill_id`, `agenda_items.bill_id` (`relink`) |
-| `ingest/cdep_votes.py` | `votes`, `vote_records` |
-| `ingest/cdep_agenda.py` | `agendas`, `agenda_items` |
+| `ingest/cdep_votes.py`, `ingest/senat_votes.py` | `votes`, `vote_records` (rows of their own chamber) |
+| `ingest/cdep_agenda.py`, `ingest/senat_agenda.py` | `agendas`, `agenda_items` (rows of their own chamber) |
+| `ingest/senat_bills.py` | Senate rows of `bills` and their children (through `cdep_bills.store_bill`); links Senate `votes.bill_id`, `agenda_items.bill_id` and Senate bill initiators (`link`) |
 | `ingest/photos.py` | files under `data/photos/` |
 | `db.py` | `schema_migrations`, `ingest_log` |
 
@@ -29,6 +30,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 
 - Members: `cd-<legislature>-<cdep idm>` and `senat-<legislature>-<senat.ro GUID>`. Bill initiators and nominal votes keep the cdep.ro reference as published (`member_ref`), which may point to a previous legislature.
 - Bills `cd-<idp>`, votes `cd-<idv>`, agendas `cd-<oid>`, questions `cd-<idi>`.
+- Senate: bills `senat-<cod>`, votes `senat-<AppID GUID>`, agendas `senat-<YYYY-MM-DD>`. A bill in both chambers is matched by its Senate number (`bills.senate_key`, e.g. `L511/2026`); the site shows the cdep.ro page with the Senate procedure and votes attached.
 
 ## Indicators
 

@@ -16,7 +16,8 @@ def date_ro(value: dt.date | dt.datetime | None, time: bool = False) -> str:
     if value is None:
         return "–"
     text = f"{value.day} {MONTHS[value.month - 1]} {value.year}"
-    if time and isinstance(value, dt.datetime):
+    # senat.ro publishes no time of day for votes (stored as midnight): show the date only.
+    if time and isinstance(value, dt.datetime) and (value.hour, value.minute) != (0, 0):
         text += f", {value:%H:%M}"
     return text
 
