@@ -18,7 +18,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 | Module | Tables written |
 | --- | --- |
 | `ingest/cdep_members.py`, `ingest/senat_members.py` | `members` (incl. `cv`), `parl_groups`, `group_memberships`, `party_memberships`, `group_roles`, `committees`, `committee_memberships`, `member_stats` |
-| `ingest/cdep_activity.py`, `ingest/senat_activity.py` (through `cdep_activity.store`) | `questions`, `speeches`, `motions`, `motion_signatures`, `declarations` |
+| `ingest/cdep_activity.py`, `ingest/senat_activity.py` (through `cdep_activity.store`) | `questions`, `speeches`, `motions`, `motion_signatures` |
 | `ingest/cdep_steno.py` | `stenograms`, `speech_texts` |
 | `ingest/cdep_bills.py` | `bills`, `bill_initiators`, `bill_events`, `bill_documents`; links `votes.bill_id`, `agenda_items.bill_id` (`relink`) |
 | `ingest/cdep_votes.py`, `ingest/senat_votes.py` | `votes`, `vote_records` (rows of their own chamber) |

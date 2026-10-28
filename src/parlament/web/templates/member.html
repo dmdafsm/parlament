@@ -52,8 +52,6 @@
     {% else %}<p class="muted">–</p>{% endfor %}
 
     {% if d.offices %}<h6 class="section-label"><i>location_on</i> Birou parlamentar</h6><p>{{ d.offices }}</p>{% endif %}
-    {% if declarations %}<h6 class="section-label"><i>description</i> Declarații de avere și interese</h6>
-      {% for x in declarations %}<a class="chip" href="{{ x.url }}" rel="noopener"><i>picture_as_pdf</i><span>{{ x.kind }} {{ x.filed_on|date_ro }}</span></a>{% endfor %}{% endif %}
   </div>
   <div class="s12 l6">
     <h6 class="section-label"><i>how_to_vote</i> Voturi recente {% if votes %}<a class="small-text link" href="/parlamentar/{{ m.id }}/voturi">toate</a>{% endif %}</h6>

@@ -1,7 +1,7 @@
-"""Per-deputy activity lists on cdep.ro: bills initiated, questions, motions, speeches, declarations.
+"""Per-deputy activity lists on cdep.ro: bills initiated, questions, motions, speeches.
 
 Profile sub-pages are `structura2015.mp?...&pag=N`: 2 = bills initiated, 3 = questions and interpellations,
-6 = interest declarations (scanned PDFs), 11 = motions signed. Speeches come from the stenogram search
+11 = motions signed. Speeches come from the stenogram search
 linked on the profile (`steno2015.lista?idv=...`).
 """
 
@@ -121,19 +121,6 @@ def parse_speeches(page: str) -> list[dict]:
     return result
 
 
-def parse_declarations(page: str) -> list[dict]:
-    """Interest/asset declaration PDFs linked from the profile sub-page (we link to them, we do not OCR them)."""
-    result = []
-    heading = next((node_text(h) for h in html(page).css("h3") if "Declara" in node_text(h)), "")
-    kind = "avere" if "avere" in heading.lower() else "interese"
-    filed = parse_dotted_date(heading)
-    for link in html(page).css("a"):
-        href = link.attributes.get("href", "")
-        if href.lower().endswith(".pdf") and "/declaratii/" in href:
-            result.append({"kind": kind, "filed_on": filed, "url": absolute(href)})
-    return list({item["url"]: item for item in result}.values())
-
-
 def store(conn: psycopg.Connection, member_id: str, data: dict) -> None:
     """Replace the member's lists present in `data`; shared with senat_activity (same tables, own ids)."""
     if "questions" in data:
@@ -183,12 +170,6 @@ def store(conn: psycopg.Connection, member_id: str, data: dict) -> None:
             )
             conn.execute(
                 "INSERT INTO motion_signatures VALUES (%s, %s) ON CONFLICT DO NOTHING", (item["id"], member_id)
-            )
-    if "declarations" in data:
-        for item in data["declarations"]:
-            conn.execute(
-                "INSERT INTO declarations VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (member_id, item["kind"], item["filed_on"], item["url"]),
             )
 
 
