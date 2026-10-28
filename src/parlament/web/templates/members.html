@@ -3,7 +3,12 @@
 {% block content %}
 <h4 class="page-title">Parlamentari</h4>
 <p class="muted">Legislatura {{ legislature }}–{{ legislature + 4 }}. Grupează, filtrează și sortează după activitate.</p>
+{% if legislatures|length > 1 %}<nav class="wrap no-margin" aria-label="Legislatura">
+  {% for leg in legislatures %}<a class="chip{{ ' fill' if leg == legislature }}" href="/parlamentari{% if loop.index > 1 %}?legislatura={{ leg }}{% endif %}">{{ leg }}–{{ leg + 4 }}</a>{% endfor %}
+</nav>
+{% if legislature != legislatures[0] %}<p class="small-text muted">Legislatură încheiată: sunt preluate profilurile, grupurile și traseul politic; voturile și activitatea detaliată sunt doar pentru legislatura curentă.</p>{% endif %}{% endif %}
 <form id="filters" action="/parlamentari" method="get" hx-get="/parlamentari" hx-target="#results" hx-push-url="true" hx-trigger="change, input from:#q delay:400ms, submit">
+  {% if params.legislatura %}<input type="hidden" name="legislatura" value="{{ params.legislatura }}">{% endif %}
   <div class="grid">
     <div class="s12 m6 l3 field label prefix border small"><i>search</i><input id="q" name="q" type="search" value="{{ params.q }}" placeholder=" "><label>Nume</label></div>
     <div class="s6 m3 l2 field label suffix border small">
@@ -27,9 +32,9 @@
         {% for c in constituencies %}<option value="{{ c.no }}" {{ 'selected' if params.judet == c.no }}>{{ c.no }}. {{ c.name }}</option>{% endfor %}
       </select><label for="judet-f">Circumscripție</label><i>arrow_drop_down</i>
     </div>
-    <div class="s12 m4 l1 middle-align">
+    {% if not params.legislatura %}<div class="s12 m4 l1 middle-align">
       <label class="checkbox"><input type="checkbox" name="fosti" value="true" {{ 'checked' if params.fosti }}><span>Foști</span></label>
-    </div>
+    </div>{% endif %}
   </div>
   <noscript><button>Aplică</button></noscript>
 </form>

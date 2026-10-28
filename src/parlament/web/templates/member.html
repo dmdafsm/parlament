@@ -8,17 +8,18 @@
   <img class="portrait" src="/foto/{{ m.id }}?marime=mare" alt="Fotografia lui {{ m.name }}" referrerpolicy="no-referrer">
   <div class="max">
     <h4 class="no-margin">{{ m.name }}</h4>
-    <p class="no-margin">{{ m.chamber|role|capitalize }}{% if m.constituency %}, circumscripția {{ m.constituency_no }} {{ m.constituency }}{% elif d.minority_org %}, {{ d.minority_org }}{% endif %}</p>
+    <p class="no-margin">{{ m.chamber|role|capitalize }}{% if m.legislature != legislature %} în legislatura {{ m.legislature }}–{{ m.legislature + 4 }}{% endif %}{% if m.constituency %}, circumscripția {{ m.constituency_no }} {{ m.constituency }}{% elif d.minority_org %}, {{ d.minority_org }}{% endif %}</p>
     <nav class="wrap no-margin">
-      {% if m.group_name %}<a class="chip primary" href="/parlamentari?grup={{ m.group_short|urlencode }}"><i>groups</i><span>{{ m.group_name }}</span></a>{% endif %}
+      {% if m.group_name %}<a class="chip primary wrap-text" href="/parlamentari?grup={{ m.group_short|urlencode }}{% if m.legislature != legislature %}&amp;legislatura={{ m.legislature }}{% endif %}"><i>groups</i><span>{{ m.group_name }}</span></a>{% endif %}
       {% if d.party %}<span class="chip"><i>flag</i><span>{{ d.party_name or d.party }}</span></span>{% endif %}
-      {% if not m.in_office %}<span class="chip error"><i>block</i><span>Mandat încetat {{ d.mandate_end|date_ro }}</span></span>{% endif %}
+      {% if not m.in_office and m.legislature == legislature %}<span class="chip error"><i>block</i><span>Mandat încetat {{ d.mandate_end|date_ro }}</span></span>{% endif %}
     </nav>
     <p class="small-text muted">
       {% if d.birth_date %}Născut(ă) la {{ d.birth_date|date_ro }}. {% endif %}
       {% if d.validated_on %}Mandat validat la {{ d.validated_on|date_ro }}. {% endif %}
       {% if d.mandate_end_note %}{{ d.mandate_end_note }}. {% endif %}
     </p>
+    {% if mandates %}<p class="small-text no-margin">Alte mandate: {% for o in mandates %}<a class="link" href="/parlamentar/{{ o.id }}">{{ o.chamber|role }} {{ o.legislature }}–{{ o.legislature + 4 }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     <nav class="wrap">
       <a class="button border small" href="{{ d.url }}" rel="noopener"><i>open_in_new</i><span>Profil oficial</span></a>
       <a class="button border small" href="/feed/parlamentar/{{ m.id }}.xml"><i>rss_feed</i><span>Urmărește (RSS)</span></a>

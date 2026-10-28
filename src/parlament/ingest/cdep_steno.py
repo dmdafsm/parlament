@@ -64,12 +64,13 @@ def _paragraphs(block: str) -> list[str]:
     return [text for text in texts if text]
 
 
-def store(conn: psycopg.Connection, url: str, stenogram: dict, members: set[str]) -> None:
+def store(conn: psycopg.Connection, url: str, stenogram: dict, members: set[str], chamber: str = "cd") -> None:
+    """Upsert a stenogram and replace its turns; shared with senat_steno."""
     conn.execute(
-        """INSERT INTO stenograms (url, sitting, sitting_on, title) VALUES (%s, %s, %s, %s)
+        """INSERT INTO stenograms (url, chamber, sitting, sitting_on, title) VALUES (%s, %s, %s, %s, %s)
            ON CONFLICT (url) DO UPDATE SET sitting = EXCLUDED.sitting, sitting_on = EXCLUDED.sitting_on,
                title = EXCLUDED.title, fetched_at = now()""",
-        (url, stenogram["sitting"], stenogram["sitting_on"], stenogram["title"]),
+        (url, chamber, stenogram["sitting"], stenogram["sitting_on"], stenogram["title"]),
     )
     conn.execute("DELETE FROM speech_texts WHERE url = %s", (url,))
     with conn.cursor() as cursor:

@@ -64,19 +64,21 @@ class Fetcher:
 
     def get(self, source: str, url: str, encoding: str | None = None, fresh: bool = False) -> str:
         """Download `url` (or reuse the raw copy with use_cache, unless `fresh`) and return decoded text."""
-        return self._fetch(source, url, url, encoding, fresh=fresh)
+        return decode(self._fetch(source, url, url, fresh=fresh), encoding)
+
+    def get_bytes(self, source: str, url: str, fresh: bool = False) -> bytes:
+        """Like `get`, for binary documents (PDF)."""
+        return self._fetch(source, url, url, fresh=fresh)
 
     def post(self, source: str, url: str, form: dict[str, str], key: str, fresh: bool = False) -> str:
         """Submit a page's own form (ASP.NET postback), as a browser does when a link on it is clicked.
         `key` names the action (e.g. 'day=2026-10-26') and identifies the raw copy, since the form state varies."""
-        return self._fetch(source, url, f"{url}#{key}", None, form, fresh)
+        return decode(self._fetch(source, url, f"{url}#{key}", form, fresh))
 
-    def _fetch(
-        self, source: str, url: str, cache_key: str, encoding: str | None, form: dict | None = None, fresh: bool = False
-    ) -> str:
+    def _fetch(self, source: str, url: str, cache_key: str, form: dict | None = None, fresh: bool = False) -> bytes:
         path = self.cache_path(source, cache_key)
         if self.use_cache and not fresh and path.exists():
-            return decode(path.read_bytes(), encoding)
+            return path.read_bytes()
         if self.conf.fetch_mode == "offline":
             raise FetchError(f"{cache_key}: not in the raw cache (offline mode)")
         if form is not None and self.conf.fetch_mode == "wayback":
@@ -106,7 +108,7 @@ class Fetcher:
             raise FetchError(f"{url}: no archived copy")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(response.content)
-        return decode(response.content, encoding)
+        return response.content
 
     def blocked_list(self, source: str) -> Path:
         return self.conf.data_dir / "blocked" / f"{source}.txt"

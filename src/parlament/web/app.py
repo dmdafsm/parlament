@@ -125,12 +125,15 @@ def members_page(
     grup: str = Query("", max_length=40),
     judet: str = Query("", pattern=r"^(|[1-9]|[1-3]\d|4[0-3])$"),
     fosti: bool = Query(False),
+    legislatura: int | None = Query(None),
     conn: Connection = Depends(get_conn),
 ):
     county = int(judet) if judet else None  # forms send an empty value for "all"
-    rows = analytics.members(
-        conn, CONF.legislature, camera or None, sort, q or None, grup or None, county, in_office=not fosti
-    )
+    available = analytics.legislatures(conn)
+    leg = legislatura if legislatura in available else CONF.legislature
+    # In a past legislature every mandate has ended: "former" only means something for the current one.
+    in_office = not fosti and leg == CONF.legislature
+    rows = analytics.members(conn, leg, camera or None, sort, q or None, grup or None, county, in_office=in_office)
     sections: list[tuple[str, list[dict]]] = []
     if grupare:
         key = GROUPINGS[grupare]
@@ -156,15 +159,17 @@ def members_page(
         sections = [("", rows)]
     groups = conn.execute(
         "SELECT DISTINCT short_name FROM parl_groups WHERE legislature = %s AND short_name IS NOT NULL ORDER BY 1",
-        (CONF.legislature,),
+        (leg,),
     ).fetchall()
     return render(
         request,
         "members.html",
         partial="_members_results.html",
+        legislature=leg,
+        legislatures=available,
         sections=sections,
         total=len(rows),
-        medians=analytics.chamber_medians(conn, CONF.legislature),
+        medians=analytics.chamber_medians(conn, leg),
         params={
             "camera": camera,
             "grupare": grupare,
@@ -173,6 +178,7 @@ def members_page(
             "grup": grup,
             "judet": judet,
             "fosti": fosti,
+            "legislatura": leg if leg != CONF.legislature else "",
         },
         sorts=analytics.SORTS,
         groups=[row["short_name"] for row in groups],
@@ -225,7 +231,8 @@ def member_page(request: Request, member_id: str, conn: Connection = Depends(get
             "SELECT mo.* FROM motions mo JOIN motion_signatures s ON s.motion_id = mo.id WHERE s.member_id = %s",
             (member_id,),
         ).fetchall(),
-        medians=analytics.chamber_medians(conn, CONF.legislature).get(member["chamber"]),
+        medians=analytics.chamber_medians(conn, member["legislature"]).get(member["chamber"]),
+        mandates=analytics.mandates(conn, member_id),
     )
 
 
@@ -287,6 +294,7 @@ def bill_page(request: Request, bill_id: str, conn: Connection = Depends(get_con
         b=bill,
         other=other,
         stage=analytics.bill_stage(bill),
+        summary=conn.execute("SELECT * FROM bill_summaries WHERE bill_id = %s", (bill_id,)).fetchone(),
         initiators=initiators,
         events=conn.execute("SELECT * FROM bill_events WHERE bill_id = %s ORDER BY seq", (bill_id,)).fetchall(),
         senate_events=(

@@ -39,6 +39,10 @@ WITH vote_window AS (
     JOIN votes v ON v.chamber = m.chamber AND v.has_nominal AND NOT v.is_test
          AND v.voted_at::date >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
          AND (m.mandate_end IS NULL OR v.voted_at::date <= m.mandate_end)
+         -- A mandate of an earlier legislature with no end date ends when the next legislature starts.
+         AND v.voted_at::date < coalesce((SELECT min(n.validated_on) FROM members n
+                                          WHERE n.chamber = m.chamber AND n.legislature = m.legislature + 4),
+                                         'infinity'::date)
     GROUP BY m.id
 ),
 present AS (
@@ -158,6 +162,23 @@ def members(
     order = SORTS.get(sort, SORTS["nume"])
     sql = f"SELECT * FROM ({MEMBER_OVERVIEW}) o WHERE {' AND '.join(where)} ORDER BY {order}"
     return conn.execute(sql, params).fetchall()
+
+
+def legislatures(conn: psycopg.Connection) -> list[int]:
+    """Legislatures with MPs in the database, newest first."""
+    return [row["legislature"] for row in conn.execute("SELECT DISTINCT legislature FROM members ORDER BY 1 DESC")]
+
+
+def mandates(conn: psycopg.Connection, member_id: str) -> list[dict]:
+    """The same person's mandates in other legislatures or the other chamber: same name (folded), and same birth
+    date when both records have one. Ids differ between legislatures, so the name is the only common key."""
+    return conn.execute(
+        """SELECT o.id, o.chamber, o.legislature FROM members m JOIN members o
+               ON o.id <> m.id AND lower(f_unaccent(o.sort_name)) = lower(f_unaccent(m.sort_name))
+                  AND (o.birth_date IS NULL OR m.birth_date IS NULL OR o.birth_date = m.birth_date)
+           WHERE m.id = %s ORDER BY o.legislature DESC, o.chamber""",
+        (member_id,),
+    ).fetchall()
 
 
 def member(conn: psycopg.Connection, member_id: str) -> dict | None:
@@ -399,7 +420,7 @@ def search(conn: psycopg.Connection, query: str, limit: int = 20) -> dict[str, l
         "texts": [
             {**row, "snippet": snippet(row["body"], query)}
             for row in conn.execute(
-                """SELECT t.url, t.speaker, t.member_id, t.body, st.sitting_on, st.title
+                """SELECT t.url, t.speaker, t.member_id, t.body, st.chamber, st.sitting_on, st.title
                    FROM speech_texts t JOIN stenograms st ON st.url = t.url, to_tsquery('simple', %(q)s) q
                    WHERE t.search @@ q ORDER BY st.sitting_on DESC NULLS LAST, t.url, t.seq LIMIT %(limit)s""",
                 params,

@@ -9,6 +9,7 @@ from parlament import db
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import (
+    bill_texts,
     cdep_activity,
     cdep_agenda,
     cdep_bills,
@@ -19,6 +20,7 @@ from parlament.ingest import (
     senat_agenda,
     senat_bills,
     senat_members,
+    senat_steno,
     senat_votes,
 )
 
@@ -91,10 +93,28 @@ def ingest_activity(
 
 
 @ingest_app.command("stenograms")
-def ingest_stenograms(limit: int = typer.Option(None), from_raw: bool = CacheOption) -> None:
-    """Textul stenogramelor (Camera) pentru luarile de cuvant colectate, pentru cautare in text."""
+def ingest_stenograms(
+    limit: int = typer.Option(None),
+    chamber: str = typer.Option("all", help="cd, senat sau all"),
+    from_raw: bool = CacheOption,
+) -> None:
+    """Textul stenogramelor pentru cautare in text: Camera (luarile de cuvant colectate), Senat (toate sedintele)."""
     with collecting(from_raw) as (conn, fetcher):
-        typer.echo(f"Stenograme: {cdep_steno.ingest(conn, fetcher, limit)}")
+        if chamber in ("cd", "all"):
+            typer.echo(f"Stenograme Camera: {cdep_steno.ingest(conn, fetcher, limit)}")
+        if chamber in ("senat", "all"):
+            typer.echo(f"Stenograme Senat: {senat_steno.ingest(conn, fetcher, settings().legislature, limit)}")
+
+
+@ingest_app.command("memoranda")
+def ingest_memoranda(
+    limit: int = typer.Option(None),
+    site: str = typer.Option("all", help="senat, cdep sau all (de pe ce site se descarca)"),
+    from_raw: bool = CacheOption,
+) -> None:
+    """Textul expunerilor de motive (PDF), pentru rezumatele pe intelesul tuturor."""
+    with collecting(from_raw) as (conn, fetcher):
+        typer.echo(f"Expuneri de motive: {bill_texts.ingest(conn, fetcher, limit, site)}")
 
 
 @ingest_app.command("bills")
@@ -195,6 +215,15 @@ def relink() -> None:
     """Leaga voturile si punctele de pe ordinea de zi de proiectele salvate."""
     with db.connect() as conn:
         typer.echo(f"Legaturi noi: {cdep_bills.relink(conn) + senat_bills.link(conn)}")
+
+
+@app.command()
+def summarize(limit: int = typer.Option(None, help="Doar primele N proiecte")) -> None:
+    """Rezumate pe intelesul tuturor cu modelul local (PARLAMENT_LLM_URL, de ex. mlx_lm.server)."""
+    from parlament import summaries
+
+    with db.connect() as conn:
+        typer.echo(f"Rezumate: {summaries.summarize(conn, limit=limit)}")
 
 
 @app.command()
