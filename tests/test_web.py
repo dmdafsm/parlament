@@ -106,5 +106,8 @@ def test_senate_pages(client):
     assert "Respins definitiv" in senate_only and "Prima cameră: Senat" in senate_only
     profile = client.get("/parlamentar/senat-2024-aaaaaaaa-1111-2222-3333-444444444444").text
     assert "Biografie (CV)" in profile and "Liceul Exemplu" in profile and "Tel.: 000" not in profile
+    deputy = client.get("/parlamentar/cd-2024-1").text
+    # Free-text CVs have no entry labels.
+    assert "Spitalul Exemplu" in deputy and "None" not in deputy
     agenda = client.get("/ordinea-de-zi?camera=senat").text
     assert "Ordinea de zi a Ședinței Senatului din 24 iunie 2025" in agenda and "/lege/senat-901" in agenda

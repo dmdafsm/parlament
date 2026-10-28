@@ -4,14 +4,13 @@ senat.ro shows only the current party and group (no dated history) and loads det
 ASP.NET postbacks; we use the counters printed on the profile page and do not replay postbacks.
 """
 
-import json
 import re
 
 import psycopg
 
 from parlament import db
 from parlament.fetch import Fetcher, FetchError
-from parlament.ingest.cdep_members import Profile, store_history
+from parlament.ingest.cdep_members import Profile, store_cv, store_history
 from parlament.parsing import ParseError, clean, fold, form_fields, html, node_text, parse_dotted_date, query_param
 
 BASE = "https://www.senat.ro"
@@ -297,13 +296,6 @@ def clean_tags(text: str) -> str:
     return "\n".join(lines)
 
 
-def store_biography(conn: psycopg.Connection, mid: str, sections: list[dict], url: str) -> None:
-    conn.execute(
-        "UPDATE members SET cv = %s, cv_url = %s WHERE id = %s",
-        (json.dumps(sections, ensure_ascii=False) if sections else None, url, mid),
-    )
-
-
 def ingest(conn: psycopg.Connection, fetcher: Fetcher, legislature: int, limit: int | None = None) -> int:
     log = db.log_start(conn, SOURCE, f"members senat {legislature}")
     listed = parse_senator_list(fetcher.get("senat", LIST_URL))
@@ -322,7 +314,7 @@ def ingest(conn: psycopg.Connection, fetcher: Fetcher, legislature: int, limit: 
             form = {**form_fields(page), "__EVENTTARGET": BIOGRAPHY, "__EVENTARGUMENT": ""}
             biography = parse_biography(fetcher.post("senat", profile_url(senator["guid"]), form, "biografie"))
             with conn.transaction():
-                store_biography(conn, mid, biography, profile_url(senator["guid"]))
+                store_cv(conn, mid, biography, profile_url(senator["guid"]))
         except (FetchError, ParseError) as error:
             errors.append(f"{mid} biografie: {error}")
         count += 1

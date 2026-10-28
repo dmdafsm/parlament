@@ -88,9 +88,10 @@
 <div class="grid">{% for s in d.cv %}
   <div class="s12 m6"><div class="padding surface-container-low round">
     <h6 class="small no-margin">{{ s.section }}</h6>
-    {% for e in s.entries %}{% if s.entries|length > 1 or e.label != s.section %}<div class="small-text muted top-margin">{{ e.label }}</div>{% endif %}<p class="cv-text no-margin">{{ e.text }}</p>{% endfor %}
+    {% for e in s.entries %}{% if e.label and (s.entries|length > 1 or e.label != s.section) %}<div class="small-text muted top-margin">{{ e.label }}</div>{% endif %}<p class="cv-text no-margin">{{ e.text }}</p>{% endfor %}
   </div></div>
 {% endfor %}</div>
 <p class="small-text muted">Așa cum este publicat de {{ 'Camera Deputaților' if m.chamber == 'cd' else 'Senat' }}{% if d.cv_url %} (<a class="link" href="{{ d.cv_url }}" rel="noopener">sursa</a>){% endif %}. Textul nu este verificat sau corectat de noi.</p>
-{% else %}<p class="muted">CV-ul nu a fost preluat încă.{% if d.cv_url %} <a class="link" href="{{ d.cv_url }}" rel="noopener">Vezi pe site-ul oficial</a>.{% endif %}</p>{% endif %}
+{% elif d.cv_url %}<p class="muted">CV-ul nu este publicat ca text pe site-ul oficial (uneori există doar în format PDF). <a class="link" href="{{ d.cv_url }}" rel="noopener">Vezi pagina oficială</a>.</p>
+{% else %}<p class="muted">CV-ul nu a fost preluat încă.</p>{% endif %}
 {% endblock %}

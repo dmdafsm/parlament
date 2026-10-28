@@ -140,3 +140,44 @@ def test_diaspora_constituency_name():
     assert senat_members.constituency_name(
         "Circumscripția electorală pentru românii cu domiciliul în afara României"
     ) == ("Diaspora")
+
+
+def test_deputy_cv_europass_tables():
+    cv = cdep_members.parse_cv(fixture("cdep_cv_table.html"))
+    # Personal details (birth date, e-mail, phone) are not stored.
+    assert [s["section"] for s in cv] == ["Experiența profesională", "Competențe lingvistice"]
+    jobs = cv[0]["entries"]
+    assert jobs[0] == {"label": "2024 - ÎN CURS - București", "text": "Deputat\nCamera Deputaților"}
+    # A new 'Perioada' row starts a new entry even without the blank separator row.
+    assert [(e["label"], e["text"]) for e in jobs[1:]] == [
+        ("2015 - 2024 - Exemplu", "Profesor"),
+        ("2010 - 2015", "Inginer"),
+    ]
+    languages = cv[1]["entries"]
+    assert languages == [
+        {"label": "LIMBĂ(I) MATERNĂ(E)", "text": "română"},
+        {"label": "engleză", "text": "citit C1, scris B2"},
+    ]
+
+
+def test_deputy_cv_free_text_and_missing():
+    cv = cdep_members.parse_cv(fixture("cdep_cv_text.html"))
+    assert [s["section"] for s in cv] == ["Experiența profesională", "Alte informații"]
+    assert cv[0]["entries"] == [
+        {"label": None, "text": "2024 - Prezent, Deputat, Camera Deputaților\n2012 - 2024, Medic, Spitalul Exemplu"}
+    ]
+    # The page footer is not part of the CV.
+    assert cv[1]["entries"][0]["text"] == "Membru al unei asociații profesionale"
+    # A profile without the CV view (only a PDF, or nothing) gives no sections.
+    assert cdep_members.parse_cv(fixture("cdep_profile.html")) == []
+
+
+def test_deputy_cv_other_layouts():
+    # One table whose section headings are rows; the personal section is left out.
+    cv = cdep_members.parse_cv(fixture("cdep_cv_heading_rows.html"))
+    assert cv == [{"section": "Experiența profesională", "entries": [{"label": "2020 - prezent", "text": "Avocat"}]}]
+    # Label/value divs and bulleted lists under 'bandaCV2025' headings.
+    cv = cdep_members.parse_cv(fixture("cdep_cv_divs.html"))
+    assert [s["section"] for s in cv] == ["Experiență profesională", "Activitate civică"]
+    assert cv[0]["entries"] == [{"label": "2008 - în prezent", "text": "Deputat"}]
+    assert cv[1]["entries"][0]["text"] == "Membru fondator, Asociația Exemplu\nVoluntar, Crucea Exemplu"

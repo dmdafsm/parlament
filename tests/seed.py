@@ -32,6 +32,9 @@ def seed(conn) -> None:
     profile.mandate_end = profile.mandate_end_note = None  # keep in office for the tests
     with conn.transaction():
         cdep_members.store_deputy(conn, 2024, listed, profile, "https://example.invalid/1")
+        cdep_members.store_cv(
+            conn, "cd-2024-1", cdep_members.parse_cv(fixture("cdep_cv_text.html")), "https://example.invalid/1&pag=0"
+        )
     deputy(conn, "3", "Cernat Vlad", "USR", "4")
     deputy(conn, "4", "Dima Petre", "PSD", "1")
     deputy(conn, "5", "Enescu Maria", "PSD", "1")
@@ -76,7 +79,7 @@ def seed_senate(conn) -> None:
         senat_agenda.store_agenda(
             conn, senat_agenda.parse_agenda(fixture("senat_agenda.html"), day), senat_agenda.agenda_url(day)
         )
-        senat_members.store_biography(
+        cdep_members.store_cv(
             conn, SENATOR, senat_members.parse_biography(fixture("senat_biography.html")), "https://example.invalid/s"
         )
     senat_bills.link(conn)

@@ -8,7 +8,7 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 | --- | --- |
 | MP list: grouping by parliamentary group, constituency (41 counties, București, Diaspora), chamber | Done |
 | Sorting by activity: speeches, bills initiated, questions, motions, attendance/absences, votes against group, group/party changes | Done |
-| Profile: photo, affiliation, group/party history, committees, activity, contact and offices, CV | Done (CV: senators only; deputies pending) |
+| Profile: photo, affiliation, group/party history, committees, activity, contact and offices, CV | Done |
 | Current activity: bills, initiatives, plenary agenda | Done (both chambers) |
 | Bill details: summary, full history, documents, votes | Done |
 | Learning pages | Done (5 pages) |
@@ -27,14 +27,13 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 
 ## Next
 
-1. Deputy CVs: parse the profile's "Curriculum Vitae" view (`structura2015.mp?...&pag=0`) into `members.cv`, like the Senate biography. Not started: cdep.ro did not respond while the Senate work was done.
-2. Speeches: index stenogram text for full-text search.
-3. Use the official XML vote export (`evot2015.xml`) instead of HTML where it is complete.
-4. Senate activity lists (questions, speeches, motions) through the profile's postback links, like the biography.
-5. Email alerts (needs an outbound mail service and consent records), plain-language bill summaries (LLM-generated, labelled, with source links), previous legislatures (2016, 2020) for comparison.
-6. Asset declarations from ANI (integritate.eu) with year-over-year comparison, respecting [ADR 0001](engineering/decisions/0001-public-data-and-personal-data.md).
+1. Speeches: index stenogram text for full-text search.
+2. Use the official XML vote export (`evot2015.xml`) instead of HTML where it is complete.
+3. Senate activity lists (questions, speeches, motions) through the profile's postback links, like the biography.
+4. Email alerts (needs an outbound mail service and consent records), plain-language bill summaries (LLM-generated, labelled, with source links), previous legislatures (2016, 2020) for comparison.
+5. Asset declarations from ANI (integritate.eu) with year-over-year comparison, respecting [ADR 0001](engineering/decisions/0001-public-data-and-personal-data.md).
 
-Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, senator biographies.
+Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators.
 
 ## More ideas
 
