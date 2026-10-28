@@ -2,10 +2,16 @@
 
 The nominal page lists only deputies who were present. Not being listed is not stored as a vote;
 analytics derive 'not present' from the mandate dates.
+
+cdep.ro also publishes an XML export (evot2015.xml). Its daily list always has the 'not voted' count, which the
+HTML list sometimes omits, so the XML fills that gap; the HTML description is kept because it carries the vote
+type ('Vot final - ...'). The XML nominal list has names but no profile ids: it is used when every name maps to
+exactly one deputy of the legislature, otherwise the HTML nominal page (with profile links) is read instead.
 """
 
 import datetime as dt
 import re
+from html import unescape
 
 import psycopg
 
@@ -13,7 +19,7 @@ from parlament import db
 from parlament.fetch import Fetcher, FetchError
 from parlament.ingest.cdep_bills import find_bill_ref
 from parlament.ingest.cdep_members import SITE, member_ref_from_url
-from parlament.parsing import ParseError, clean, html, int_or_none, node_text, parse_long_date, query_param
+from parlament.parsing import ParseError, clean, fold, html, int_or_none, node_text, parse_long_date, query_param
 
 SOURCE = "cdep.ro"
 CHOICES = {"DA": "yes", "NU": "no", "AB": "abstain", "-": "present_not_voting"}
@@ -25,6 +31,52 @@ def day_url(day: dt.date) -> str:
 
 def nominal_url(idv: str) -> str:
     return f"{SITE}/pls/steno/evot2015.nominal?idv={idv}&idl=1"
+
+
+def xml_day_url(day: dt.date) -> str:
+    return f"{SITE}/pls/steno/evot2015.xml?par1=1&par2={day:%Y%m%d}"
+
+
+def xml_nominal_url(idv: str) -> str:
+    return f"{SITE}/pls/steno/evot2015.xml?par1=2&par2={idv}"
+
+
+def xml_rows(text: str) -> list[dict[str, str]]:
+    """The export is a flat <ROWSET><ROW><FIELD>value</FIELD>...: read it without an XML parser (no entities,
+    no external references to resolve)."""
+    return [
+        {name: clean(unescape(value)) for name, value in re.findall(r"<(\w+)>([^<]*)</\1>", row)}
+        for row in re.findall(r"<ROW>(.*?)</ROW>", text, re.S)
+    ]
+
+
+def parse_xml_day(text: str) -> dict[str, dict]:
+    """Totals per vote id from the XML daily list."""
+    return {
+        row["VOTID"]: {
+            "present": int_or_none(row.get("PREZENTI")),
+            "yes": int_or_none(row.get("AU_VOTAT_DA")),
+            "no": int_or_none(row.get("AU_VOTAT_NU")),
+            "abstain": int_or_none(row.get("AU_VOTAT_AB")),
+            "not_voted": int_or_none(row.get("NU_AU_VOTAT")),
+        }
+        for row in xml_rows(text)
+        if row.get("VOTID")
+    }
+
+
+def parse_xml_nominal(text: str, deputies: dict[str, list[str]]) -> list[dict] | None:
+    """Records from the XML nominal list, or None when a name does not map to exactly one deputy
+    (`deputies`: folded 'Surname Given' -> member ids)."""
+    records = []
+    for row in xml_rows(text):
+        name = f"{row.get('NUME', '')} {row.get('PRENUME', '')}".strip()
+        ids = deputies.get(fold(name), [])
+        choice = CHOICES.get(row.get("VOT", "").upper())
+        if len(ids) != 1 or choice is None:
+            return None
+        records.append({"member_id": ids[0], "name": name, "group": row.get("GRUP", ""), "choice": choice})
+    return records
 
 
 def latest_url() -> str:
@@ -135,6 +187,9 @@ def ingest_days(conn: psycopg.Connection, fetcher: Fetcher, days: list[dt.date |
     done = {
         row["source_id"] for row in conn.execute("SELECT source_id FROM votes WHERE chamber = 'cd' AND has_nominal")
     }
+    deputies: dict[str, list[str]] = {}
+    for row in conn.execute("SELECT id, sort_name, legislature FROM members WHERE chamber = 'cd'"):
+        deputies.setdefault(f"{row['legislature']}:{fold(row['sort_name'])}", []).append(row["id"])
     count, errors = 0, []
     for day in days:
         try:
@@ -146,11 +201,30 @@ def ingest_days(conn: psycopg.Connection, fetcher: Fetcher, days: list[dt.date |
         except (FetchError, ParseError) as error:
             errors.append(str(error))
             continue
+        if votes and any(vote["not_voted"] is None for vote in votes):
+            try:
+                totals = parse_xml_day(fetcher.get("cdep", xml_day_url(day)))
+            except FetchError as error:
+                errors.append(str(error))
+                totals = {}
+            for vote in votes:
+                xml = totals.get(vote["idv"])
+                # Fill only what the HTML lacks, and only when the other totals agree.
+                if xml and vote["not_voted"] is None and all(vote[k] == xml[k] for k in ("present", "yes", "no")):
+                    vote["not_voted"] = xml["not_voted"]
+        # A legislature starts after the December elections of its year; no votes are held between the
+        # elections and the first sitting, so 1 December separates them.
+        legislature = max(
+            (int(key.split(":")[0]) for key in deputies if dt.date(int(key[:4]), 12, 1) <= day), default=0
+        )
+        known = {key.split(":", 1)[1]: ids for key, ids in deputies.items() if key.startswith(f"{legislature}:")}
         for vote in votes:
             records = None
             if nominal and not vote["is_test"] and vote["idv"] not in done:
                 try:
-                    records = parse_nominal(fetcher.get("cdep", nominal_url(vote["idv"])))
+                    records = parse_xml_nominal(fetcher.get("cdep", xml_nominal_url(vote["idv"])), known)
+                    if records is None:
+                        records = parse_nominal(fetcher.get("cdep", nominal_url(vote["idv"])))
                 except FetchError as error:
                     errors.append(str(error))
             with conn.transaction():

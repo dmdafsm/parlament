@@ -23,17 +23,15 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 - **P3 — Votes and attendance** (done): daily and nominal votes of both chambers, attendance within the mandate, party-line voting, votes against the group, absent list per vote.
 - **P4 — Speeches and questions** (done): speeches index per deputy, questions and interpellations, motions; search without diacritics across members, bills, votes and speeches.
 - **P5 — Learning, methodology, open data** (done): learning pages, methodology with indicator definitions and last runs, CSV exports, JSON API with OpenAPI docs, RSS feeds.
-- **P6 — Extras** (partly done): party-switching page with group flows, ordinances tracker (OUG/OG approval bills, time to law), Constitutional Court mentions, tacit adoptions, declarations linked, RSS alerts per MP/bill. Not done: email alerts, plain-language summaries, historical legislatures.
+- **P6 — Extras** (partly done): party-switching page with group flows, ordinances tracker (OUG/OG approval bills, time to law), Constitutional Court mentions, tacit adoptions, declarations linked, RSS alerts per MP/bill. Not done: plain-language summaries, historical legislatures. Dropped: email alerts (RSS covers following an MP or a bill).
 
 ## Next
 
-1. Speeches: index stenogram text for full-text search.
-2. Use the official XML vote export (`evot2015.xml`) instead of HTML where it is complete.
-3. Senate activity lists (questions, speeches, motions) through the profile's postback links, like the biography.
-4. Email alerts (needs an outbound mail service and consent records), plain-language bill summaries (LLM-generated, labelled, with source links), previous legislatures (2016, 2020) for comparison.
-5. Asset declarations from ANI (integritate.eu) with year-over-year comparison, respecting [ADR 0001](engineering/decisions/0001-public-data-and-personal-data.md).
+1. Asset declarations from ANI (integritate.eu) with year-over-year comparison, respecting [ADR 0001](engineering/decisions/0001-public-data-and-personal-data.md).
+2. Senate stenogram text (the "Citește" postback per sitting) for the same full-text search as the Chamber.
+3. Plain-language bill summaries (LLM-generated, labelled, with source links), previous legislatures (2016, 2020) for comparison.
 
-Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators.
+Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators, full-text search in Chamber stenograms, XML vote export (missing 'not voted' counts, nominal lists), Senate questions, interpellations, speeches and motions.
 
 ## More ideas
 

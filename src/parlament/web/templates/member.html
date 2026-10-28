@@ -75,10 +75,11 @@
   </div>
   <div class="s12 l6">
     <h6 class="section-label"><i>record_voice_over</i> Luări de cuvânt</h6>
-    {% for s in speeches[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ s.sitting }}{% if s.duration %} · {{ s.duration }}{% endif %}</div>{% if s.url %}<a class="link" href="{{ s.url }}" rel="noopener">{{ s.topic }}</a>{% else %}{{ s.topic }}{% endif %}</div>
+    {% if m.chamber == 'senat' and speeches %}<p class="small-text muted">senat.ro publică doar ședințele în care senatorul a luat cuvântul, fără temă.</p>{% endif %}
+    {% for s in speeches[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ s.sitting }}{% if s.duration %} · {{ s.duration }}{% endif %}</div>{% if s.topic %}{% if s.url %}<a class="link" href="{{ s.url }}" rel="noopener">{{ s.topic }}</a>{% else %}{{ s.topic }}{% endif %}{% endif %}</div>
     {% else %}<p class="muted">Nicio luare de cuvânt colectată.</p>{% endfor %}
     <h6 class="section-label"><i>help</i> Întrebări și interpelări</h6>
-    {% for x in questions[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ x.kind|capitalize }} {{ x.number }} · {{ x.asked_on|date_ro }}</div><a class="link" href="{{ x.url }}" rel="noopener">{{ x.title or 'fără titlu' }}</a></div>
+    {% for x in questions[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ x.kind|capitalize }} {{ x.number }} · {{ x.asked_on|date_ro }}</div><a class="link" href="{{ x.url }}" rel="noopener">{{ x.title or 'fără titlu' }}</a>{% if x.recipient %}<div class="small-text muted">Către: {{ x.recipient }}{% if x.answered %} · are răspuns{% endif %}</div>{% endif %}</div>
     {% else %}<p class="muted">–</p>{% endfor %}
   </div>
 </div>
