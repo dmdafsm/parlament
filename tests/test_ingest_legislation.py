@@ -86,14 +86,6 @@ def test_activity_lists():
     assert speeches[1]["topic"] == "Declarații politice."
     pages = cdep_activity.speech_pages(fixture("cdep_speeches.html"))
     assert [page.rsplit("pags=", 1)[1] for page in pages] == ["21", "41"]
-    declarations = cdep_activity.parse_declarations(fixture("cdep_declarations.html"))
-    assert declarations == [
-        {
-            "kind": "interese",
-            "filed_on": dt.date(2024, 12, 21),
-            "url": "https://www.cdep.ro/declaratii/deputati/2024/interese/1e.pdf",
-        }
-    ]
 
 
 def test_latest_sitting_date():

@@ -225,9 +225,6 @@ def member_page(request: Request, member_id: str, conn: Connection = Depends(get
             "SELECT mo.* FROM motions mo JOIN motion_signatures s ON s.motion_id = mo.id WHERE s.member_id = %s",
             (member_id,),
         ).fetchall(),
-        declarations=conn.execute(
-            "SELECT * FROM declarations WHERE member_id = %s ORDER BY filed_on DESC NULLS LAST", (member_id,)
-        ).fetchall(),
         medians=analytics.chamber_medians(conn, CONF.legislature).get(member["chamber"]),
     )
 
