@@ -6,6 +6,7 @@ from parlament.ingest import (
     cdep_agenda,
     cdep_bills,
     cdep_members,
+    cdep_steno,
     cdep_votes,
     senat_agenda,
     senat_bills,
@@ -23,6 +24,9 @@ def deputy(conn, idm, name, group, idg, start_group=None, validated=dt.date(2024
     profile.stats = {"speeches": (int(idm) * 2, None), "bills": (int(idm), None)}
     with conn.transaction():
         cdep_members.store_deputy(conn, 2024, listed, profile, f"https://example.invalid/{idm}")
+
+
+STENOGRAM = "https://example.invalid/steno?ids=1&idm=3"
 
 
 def seed(conn) -> None:
@@ -55,6 +59,7 @@ def seed(conn) -> None:
             conn, cdep_agenda.parse_agenda(fixture("cdep_agenda.html")), "https://example.invalid/oz"
         )
         cdep_bills.store_bill(conn, "22001", cdep_bills.parse_bill(fixture("cdep_bill.html")))
+        cdep_steno.store(conn, STENOGRAM, cdep_steno.parse_stenogram(fixture("cdep_stenogram.html")), {"cd-2024-1"})
     seed_senate(conn)
     conn.commit()
 

@@ -13,7 +13,9 @@ from parlament.ingest import (
     cdep_agenda,
     cdep_bills,
     cdep_members,
+    cdep_steno,
     cdep_votes,
+    senat_activity,
     senat_agenda,
     senat_bills,
     senat_members,
@@ -72,16 +74,27 @@ def ingest_activity(
     legislature: int = typer.Option(None),
     limit: int = typer.Option(None),
     with_bills: bool = typer.Option(True, help="Descarca si proiectele initiate"),
+    chamber: str = typer.Option("all", help="cd, senat sau all"),
     from_raw: bool = CacheOption,
 ) -> None:
-    """Deputati: initiative, intrebari, motiuni, luari de cuvant."""
+    """Initiative, intrebari si interpelari, motiuni, luari de cuvant."""
     leg = legislature or settings().legislature
     with collecting(from_raw) as (conn, fetcher):
-        count, idps = cdep_activity.ingest(conn, fetcher, leg, limit)
-        typer.echo(f"Activitate: {count} deputati, {len(set(idps))} proiecte gasite")
-        if with_bills and idps:
-            typer.echo(f"Proiecte: {cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=30)}")
-        cdep_bills.relink(conn)
+        if chamber in ("cd", "all"):
+            count, idps = cdep_activity.ingest(conn, fetcher, leg, limit)
+            typer.echo(f"Activitate: {count} deputati, {len(set(idps))} proiecte gasite")
+            if with_bills and idps:
+                typer.echo(f"Proiecte: {cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=30)}")
+            cdep_bills.relink(conn)
+        if chamber in ("senat", "all"):
+            typer.echo(f"Activitate: {senat_activity.ingest(conn, fetcher, leg, limit)} senatori")
+
+
+@ingest_app.command("stenograms")
+def ingest_stenograms(limit: int = typer.Option(None), from_raw: bool = CacheOption) -> None:
+    """Textul stenogramelor (Camera) pentru luarile de cuvant colectate, pentru cautare in text."""
+    with collecting(from_raw) as (conn, fetcher):
+        typer.echo(f"Stenograme: {cdep_steno.ingest(conn, fetcher, limit)}")
 
 
 @ingest_app.command("bills")
@@ -171,7 +184,7 @@ def ingest_all(
 ) -> None:
     """Toata colectarea, in ordine: parlamentari, activitate, ordinea de zi, voturi."""
     ingest_members(chamber="all", legislature=None, limit=limit, from_raw=False)
-    ingest_activity(legislature=None, limit=limit, with_bills=True, from_raw=False)
+    ingest_activity(legislature=None, limit=limit, with_bills=True, chamber="all", from_raw=False)
     ingest_agenda(date=None, chamber="all", from_raw=False)
     ingest_votes(start=None, end=None, days=vote_days, nominal=True, latest=False, chamber="all", from_raw=False)
     ingest_photos(refresh=False)

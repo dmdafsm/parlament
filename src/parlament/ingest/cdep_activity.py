@@ -135,20 +135,24 @@ def parse_declarations(page: str) -> list[dict]:
 
 
 def store(conn: psycopg.Connection, member_id: str, data: dict) -> None:
+    """Replace the member's lists present in `data`; shared with senat_activity (same tables, own ids)."""
     if "questions" in data:
         conn.execute("DELETE FROM questions WHERE member_id = %s", (member_id,))
         for item in data["questions"]:
             conn.execute(
-                """INSERT INTO questions (id, member_id, kind, number, asked_on, title, url) VALUES (%s, %s, %s,
-                       %s, %s, %s, %s)
-                   ON CONFLICT (id) DO UPDATE SET member_id = EXCLUDED.member_id, title = EXCLUDED.title""",
+                """INSERT INTO questions (id, member_id, kind, number, asked_on, title, recipient, answered, url)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (id) DO UPDATE SET member_id = EXCLUDED.member_id, title = EXCLUDED.title,
+                       recipient = EXCLUDED.recipient, answered = EXCLUDED.answered""",
                 (
-                    f"cd-{item['idi']}",
+                    item.get("id") or f"cd-{item['idi']}",
                     member_id,
                     item["kind"],
                     item["number"],
                     item["asked_on"],
                     item["title"],
+                    item.get("recipient"),
+                    item.get("answered"),
                     item["url"],
                 ),
             )
@@ -164,10 +168,18 @@ def store(conn: psycopg.Connection, member_id: str, data: dict) -> None:
         conn.execute("DELETE FROM motion_signatures WHERE member_id = %s", (member_id,))
         for item in data["motions"]:
             conn.execute(
-                """INSERT INTO motions (id, chamber, title, initiators, registered, result, url) VALUES (%s, 'cd',
-                       %s, %s, %s, %s, %s)
+                """INSERT INTO motions (id, chamber, title, initiators, registered, result, url)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (id) DO UPDATE SET result = EXCLUDED.result""",
-                (item["id"], item["title"], item["initiators"], item["registered"], item["result"], item["url"]),
+                (
+                    item["id"],
+                    item.get("chamber", "cd"),
+                    item["title"],
+                    item["initiators"],
+                    item["registered"],
+                    item["result"],
+                    item["url"],
+                ),
             )
             conn.execute(
                 "INSERT INTO motion_signatures VALUES (%s, %s) ON CONFLICT DO NOTHING", (item["id"], member_id)

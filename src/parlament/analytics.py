@@ -348,6 +348,26 @@ def tacit_adoptions(conn: psycopg.Connection, limit: int = 100) -> list[dict]:
     ).fetchall()
 
 
+def snippet(text: str, query: str, words: int = 14) -> list[tuple[str, bool]]:
+    """A window of `text` around the first word matching `query` (same prefixes as ts_query), as
+    (text, is_match) pieces for the template to mark without building HTML."""
+    prefixes = [term.removesuffix(":*") for term in (ts_query(query) or "").split(" & ") if term]
+    tokens = text.split()
+    hits = [i for i, token in enumerate(tokens) if any(fold(token).replace(" ", "").startswith(p) for p in prefixes)]
+    if not hits:
+        return [(" ".join(tokens[: words * 2]) + (" …" if len(tokens) > words * 2 else ""), False)]
+    start, end = max(0, hits[0] - words), min(len(tokens), hits[0] + words + 1)
+    pieces, hit_set = [], set(hits)
+    if start > 0:
+        pieces.append(("… ", False))
+    for i in range(start, end):
+        pieces.append((tokens[i], i in hit_set))
+        pieces.append((" ", False))
+    if end < len(tokens):
+        pieces.append(("…", False))
+    return pieces
+
+
 def search(conn: psycopg.Connection, query: str, limit: int = 20) -> dict[str, list[dict]]:
     params = {"q": ts_query(query) or "''", "like": f"%{query.strip()}%", "limit": limit}
     return {
@@ -375,4 +395,14 @@ def search(conn: psycopg.Connection, query: str, limit: int = 20) -> dict[str, l
                WHERE s.search @@ q ORDER BY s.sitting_on DESC NULLS LAST LIMIT %(limit)s""",
             params,
         ).fetchall(),
+        # What was said: speaker turns from the stenograms, most recent sittings first.
+        "texts": [
+            {**row, "snippet": snippet(row["body"], query)}
+            for row in conn.execute(
+                """SELECT t.url, t.speaker, t.member_id, t.body, st.sitting_on, st.title
+                   FROM speech_texts t JOIN stenograms st ON st.url = t.url, to_tsquery('simple', %(q)s) q
+                   WHERE t.search @@ q ORDER BY st.sitting_on DESC NULLS LAST, t.url, t.seq LIMIT %(limit)s""",
+                params,
+            )
+        ],
     }

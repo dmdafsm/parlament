@@ -2,7 +2,7 @@
 
 Jobs and cadence (Bucharest time):
 - every weekday at 21:00: recent votes and agendas of both chambers, and refresh of bills still in debate
-- every Sunday at 03:00: all MP profiles (with Senate biographies) and activity lists, open-data CSV export
+- every Sunday at 03:00: all MP profiles (with CVs) and activity lists, new stenogram texts, open-data CSV export
 """
 
 import datetime as dt
@@ -18,7 +18,9 @@ from parlament.ingest import (
     cdep_agenda,
     cdep_bills,
     cdep_members,
+    cdep_steno,
     cdep_votes,
+    senat_activity,
     senat_agenda,
     senat_bills,
     senat_members,
@@ -52,9 +54,11 @@ def weekly(conn, fetcher) -> None:
     leg = settings().legislature
     cdep_members.ingest(conn, fetcher, leg)
     senat_members.ingest(conn, fetcher, leg)
+    senat_activity.ingest(conn, fetcher, leg)
     _, idps = cdep_activity.ingest(conn, fetcher, leg)
     cdep_bills.ingest(conn, fetcher, sorted(set(idps)), refresh_days=30)
     cdep_bills.relink(conn)
+    cdep_steno.ingest(conn, fetcher)
     exports.write_all(conn)
 
 
