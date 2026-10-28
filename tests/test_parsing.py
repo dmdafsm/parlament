@@ -89,3 +89,37 @@ def test_offline_mode_reads_only_the_raw_cache(tmp_path):
         assert "ok" in fetcher.get("cdep", url)
         with pytest.raises(FetchError, match="offline"):
             fetcher.get("cdep", url + "&x=1")
+
+
+def test_skip_mode_records_bot_checks_and_stops_after_a_streak(tmp_path):
+    import dataclasses
+
+    import httpx
+    import pytest
+
+    from parlament.config import settings
+    from parlament.fetch import BlockedError, Fetcher, SkippedError
+
+    challenge = b"<html><h1>Firewall Captcha Authentication</h1>Captcha Result:</html>"
+    pages = {"/ok": b"<html><h1>ok</h1></html>"}
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=pages.get(request.url.path, challenge)))
+    conf = dataclasses.replace(
+        settings(), data_dir=tmp_path, request_delay=0, on_block="skip", block_cooldown=0, block_limit=2
+    )
+    with Fetcher(conf) as fetcher:
+        fetcher.client = httpx.Client(transport=transport)
+        with pytest.raises(SkippedError):
+            fetcher.get("cdep", "https://www.cdep.ro/a")
+        assert "ok" in fetcher.get("cdep", "https://www.cdep.ro/ok")  # a normal page resets the streak
+        with pytest.raises(SkippedError):
+            fetcher.get("cdep", "https://www.cdep.ro/b")
+        with pytest.raises(BlockedError):
+            fetcher.get("cdep", "https://www.cdep.ro/c")
+        listed = fetcher.blocked_list("cdep").read_text().splitlines()
+        assert [line.split("\t")[1] for line in listed] == ["https://www.cdep.ro/a", "https://www.cdep.ro/b"]
+        assert not fetcher.cache_path("cdep", "https://www.cdep.ro/a").exists()  # asked again on the next run
+
+    with Fetcher(dataclasses.replace(conf, on_block="stop")) as fetcher:
+        fetcher.client = httpx.Client(transport=transport)
+        with pytest.raises(BlockedError):
+            fetcher.get("cdep", "https://www.cdep.ro/a")
