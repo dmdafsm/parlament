@@ -20,6 +20,10 @@ class BlockedError(Exception):
     """The site answered with a bot check (CAPTCHA) or a rate limit. The whole run stops; we never try to pass it."""
 
 
+class SkippedError(FetchError):
+    """A bot check in "skip" mode: the page was recorded for later and the run goes on after a pause."""
+
+
 # The cdep.ro firewall challenge ("Firewall Captcha Authentication") has its own <h1>, so its specific markers
 # count on their own; the generic ones only on pages without a heading (a bill title may mention "captcha").
 CHALLENGE = (b"Captcha Result", b"Captcha Authentication")
@@ -43,6 +47,7 @@ class Fetcher:
             follow_redirects=True,
         )
         self._last = 0.0
+        self._blocked_in_row = 0
 
     def close(self) -> None:
         self.client.close()
@@ -75,9 +80,10 @@ class Fetcher:
         finally:
             self._last = time.monotonic()
         if response.status_code == 429:
-            raise BlockedError(f"{url}: rate limited (HTTP 429); stop and retry later")
+            self._blocked(source, url, "rate limited (HTTP 429)")
         if is_bot_check(response.content):
-            raise BlockedError(f"{url}: the site showed a bot check (CAPTCHA); stop and retry later, more slowly")
+            self._blocked(source, url, "the site showed a bot check (CAPTCHA)")
+        self._blocked_in_row = 0
         if response.status_code != 200:
             raise FetchError(f"{url}: HTTP {response.status_code}")
         if (
@@ -89,6 +95,23 @@ class Fetcher:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(response.content)
         return decode(response.content, encoding)
+
+    def blocked_list(self, source: str) -> Path:
+        return self.conf.data_dir / "blocked" / f"{source}.txt"
+
+    def _blocked(self, source: str, url: str, reason: str) -> None:
+        """Never pass a bot check. Stop the run, or in "skip" mode record the page, pause and let the caller go on;
+        a few in a row stop the run anyway. Skipped pages are not cached, so the next run asks for them again."""
+        self._blocked_in_row += 1
+        if self.conf.on_block != "skip" or self._blocked_in_row >= self.conf.block_limit:
+            raise BlockedError(f"{url}: {reason}; stop and retry later, more slowly")
+        listing = self.blocked_list(source)
+        listing.parent.mkdir(parents=True, exist_ok=True)
+        with listing.open("a") as out:
+            out.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}\t{url}\n")
+        time.sleep(self.conf.block_cooldown)
+        self._last = time.monotonic()
+        raise SkippedError(f"{url}: {reason}; skipped, listed in {listing}")
 
 
 def decode(content: bytes, encoding: str | None = None) -> str:

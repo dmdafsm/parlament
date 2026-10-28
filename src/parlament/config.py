@@ -18,6 +18,9 @@ class Settings:
     fetch_mode: str  # "live", "wayback" (archived copies, for development) or "offline" (raw cache only)
     user_agent: str
     legislature: int
+    on_block: str = "stop"  # "stop" the run at a bot check, or "skip": record the page, pause, go on
+    block_cooldown: float = 600.0  # seconds to pause after a bot check in "skip" mode
+    block_limit: int = 3  # consecutive bot checks after which even "skip" mode stops
 
 
 def settings() -> Settings:
@@ -31,4 +34,7 @@ def settings() -> Settings:
             "parlament-transparenta/0.1 (+https://github.com/dmdafsm/parlament)",
         ),
         legislature=int(os.environ.get("PARLAMENT_LEGISLATURE", CURRENT_LEGISLATURE)),
+        on_block=os.environ.get("PARLAMENT_ON_BLOCK", "stop"),
+        block_cooldown=float(os.environ.get("PARLAMENT_BLOCK_COOLDOWN", "600")),
+        block_limit=int(os.environ.get("PARLAMENT_BLOCK_LIMIT", "3")),
     )
