@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ asset('vendor/beer.min.css') }}">
   <link rel="stylesheet" href="{{ asset('app.css') }}">
   <link rel="alternate" type="application/rss+xml" title="Proiecte legislative" href="/feed/proiecte.xml">
-  <link rel="icon" href="/static/avatar.svg">
+  <link rel="icon" href="{{ asset('logo.svg') }}">
   {% block head %}{% endblock %}
 </head>
 <body class="light">
@@ -23,13 +23,13 @@
   ("/invata", "school", "Învață"),
 ] %}
 {% set path = request.url.path %}
-<nav class="left m l">
-  <header><img src="/static/avatar.svg" alt="" class="circle"></header>
+<nav class="left m l brand-rail">
+  <header><a href="/" aria-label="Acasă"><img src="{{ asset('logo.svg') }}" alt="" class="logo"></a></header>
   {% for href, icon, label in nav %}
   <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}"><i>{{ icon }}</i><div>{{ label }}</div></a>
   {% endfor %}
 </nav>
-<nav class="bottom s">
+<nav class="bottom s brand-rail">
   {% for href, icon, label in nav[:5] %}
   <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}"><i>{{ icon }}</i></a>
   {% endfor %}

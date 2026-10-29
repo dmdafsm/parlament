@@ -118,3 +118,13 @@ header.brand .field > input::placeholder { color: var(--brand-pale); }
   .hero-art { width: 55%; right: -2rem; opacity: 0.2; }
 }
 @media (max-width: 600px) { .hero { padding: 1.25rem; border-radius: 1rem; } .hero h3 { font-size: 1.9rem; line-height: 2.3rem; } }
+/* The navigation rail (and the phone's bottom bar) in the same violet, so the header and menu frame the page. */
+nav.brand-rail { background: var(--brand-deep); color: var(--brand-pale); }
+nav.left.brand-rail { background: linear-gradient(180deg, var(--brand-deep), #2e1660); }
+nav.brand-rail a, nav.brand-rail a i { color: var(--brand-pale); }
+nav.brand-rail a:hover i { background: rgb(255 255 255 / 0.12); }
+nav.brand-rail a.active > i { background: #fff; color: var(--brand-deep); }
+nav.brand-rail a.active > div { color: #fff; font-weight: 600; }
+nav.brand-rail .logo { width: 3rem; height: 3rem; display: block; }
+header.brand nav > a.max { justify-content: flex-start; }
+header.brand h6 { font-weight: 600; }
