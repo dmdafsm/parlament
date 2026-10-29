@@ -32,6 +32,8 @@ services:
     environment:
       DATABASE_URL: postgresql://parlament:${POSTGRES_PASSWORD:-parlament}@db:5432/parlament
       PARLAMENT_FETCH_MODE: ${PARLAMENT_FETCH_MODE:-live}
+      # Weekly data release on GitHub (ADR 0008); empty skips it.
+      PARLAMENT_GITHUB_TOKEN: ${PARLAMENT_GITHUB_TOKEN:-}
     volumes:
       - ./data:/data
     depends_on:

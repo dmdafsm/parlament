@@ -7,7 +7,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
    polite, sequential     parlament schedule (ingest container)                    └──► /date-deschise (CSV, weekly)
 ```
 
-- **One package** `src/parlament`: `ingest/` (one module per source and page family), `analytics.py` (all indicators), `web/` (routes, templates, static), `feeds.py`, `exports.py`, `summaries.py`, `cli.py`, `scheduler.py`, `db.py` + `migrations/`.
+- **One package** `src/parlament`: `ingest/` (one module per source and page family), `analytics.py` (all indicators), `web/` (routes, templates, static), `feeds.py`, `exports.py`, `releases.py`, `summaries.py`, `cli.py`, `scheduler.py`, `db.py` + `migrations/`.
 - **Data flow is one-way**: collectors write; the website, API, RSS and CSV only read. A page request never calls cdep.ro or senat.ro.
 - **Parsing is pure**: `parse_*(html) -> data` functions are separate from fetching and storing, tested against synthetic fixtures.
 - **Raw cache**: every downloaded page is saved under `data/raw/<site>/<sha256 of url>.html`; `--from-raw` re-parses without downloading.
@@ -28,6 +28,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 | `summaries.py` (run by hand with a local model, [ADR 0006](engineering/decisions/0006-local-llm-summaries.md)) | `bill_summaries` |
 | `ingest/photos.py` | files under `data/photos/` |
 | `analytics.py` (`refresh`, after each collection, [ADR 0007](engineering/decisions/0007-stored-member-indicators.md)) | materialized view `member_overview` |
+| `exports.py`, `releases.py` ([ADR 0008](engineering/decisions/0008-data-release-on-github.md)) | files under `data/export/` and `data/release/`; the weekly GitHub release `data-<date>` |
 | `db.py` | `schema_migrations`, `ingest_log` |
 
 ## Identifiers

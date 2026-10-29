@@ -3,7 +3,7 @@
 Jobs and cadence (Bucharest time):
 - every weekday at 21:00: recent votes and agendas of both chambers, and refresh of bills still in debate
 - every Sunday at 03:00: all MP profiles (with CVs) and activity lists, new stenogram texts (both chambers),
-  new explanatory memoranda, open-data CSV export
+  new explanatory memoranda, open-data CSV export and, with a GitHub token, the data release
 """
 
 import datetime as dt
@@ -11,7 +11,7 @@ import logging
 import time
 import traceback
 
-from parlament import analytics, db, exports
+from parlament import analytics, db, exports, releases
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import (
@@ -67,6 +67,8 @@ def weekly(conn, fetcher) -> None:
     bill_texts.ingest(conn, fetcher)
     analytics.refresh(conn)  # the exports read the indicators
     exports.write_all(conn)
+    if settings().github_token:  # the weekly data release on GitHub (ADR 0008)
+        log.info("data release %s", releases.release(conn, dt.date.today()) or "already published")
 
 
 def due(now: dt.datetime, last: dict[str, dt.date]) -> list[str]:
