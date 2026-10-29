@@ -29,7 +29,7 @@ docker compose run --rm ingest parlament init-db
 docker compose run --rm ingest parlament ingest all --vote-days 30
 ```
 
-Site-ul: <http://127.0.0.1:8000>. Containerul `ingest` actualizează datele zilnic (voturi, ordinea de zi, proiecte în dezbatere) și săptămânal (profiluri, activitate, fotografii, export CSV). Pentru producție pune un proxy HTTPS în față ([deploy/Caddyfile](deploy/Caddyfile)).
+Site-ul: <http://127.0.0.1:8000>. Containerul `ingest` actualizează datele zilnic (voturi, ordinea de zi, proiecte în dezbatere) și săptămânal (profiluri, activitate, fotografii, export CSV și, cu `PARLAMENT_GITHUB_TOKEN`, un [release de date](https://github.com/dmdafsm/parlament/releases) pe GitHub). Pentru producție pune un proxy HTTPS în față ([deploy/Caddyfile](deploy/Caddyfile)).
 
 ## Dezvoltare
 
@@ -45,6 +45,7 @@ uv run parlament ingest agenda             # ordinea de zi curentă + proiectele
 uv run parlament ingest votes --days 30    # voturi nominale (Camera Deputaților)
 uv run parlament ingest photos             # fotografii redimensionate
 uv run parlament export                    # CSV pentru /date-deschise
+uv run parlament release-data              # arhiva datelor; cu token, release pe GitHub
 uv run parlament serve --reload
 python3 scripts/verify.py                  # format, lint, teste
 ```

@@ -23,7 +23,7 @@ Downloaded pages are untrusted: parse defensively, never execute content, treat 
 
 ## Secrets and local files
 
-The only secret is the database password, provided through `.env` (ignored). Never commit `.env`, keys, `data/` or `.research/`. If something sensitive is committed, stop and report it.
+The secrets are the database password and, optionally, `PARLAMENT_GITHUB_TOKEN` for the weekly data release (a fine-grained token for this repository only, Contents: read and write; [ADR 0008](decisions/0008-data-release-on-github.md)), both provided through `.env` (ignored). Never commit `.env`, keys, `data/` or `.research/`. If something sensitive is committed, stop and report it.
 
 ## CI
 

@@ -274,6 +274,21 @@ def export(directory: str = typer.Option(None, help="Director (implicit data/exp
             typer.echo(str(path))
 
 
+@app.command("release-data")
+def release_data(publish: bool = typer.Option(True, help="Publica pe GitHub (cu PARLAMENT_GITHUB_TOKEN)")) -> None:
+    """Exporta datele si le arhiveaza (data/release/); cu token, le publica ca release pe GitHub."""
+    from parlament import exports, releases
+
+    with db.connect() as conn:
+        exports.write_all(conn)
+        if publish and settings().github_token:
+            typer.echo(releases.release(conn, dt.date.today()) or "Release-ul de azi exista deja.")
+        else:
+            paths, _ = releases.build(conn, dt.date.today(), exports.export_dir(), settings().data_dir / "release")
+            for path in paths:
+                typer.echo(str(path))
+
+
 @app.command()
 def serve(
     host: str = typer.Option("127.0.0.1"),
