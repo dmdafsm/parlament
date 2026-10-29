@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import bar, vote_subject %}
+{% from "macros.html" import bar, vote_text %}
 {% block title %}{{ m.name }} – {{ m.chamber|role }}{% endblock %}
 {% block description %}Activitatea parlamentară a lui {{ m.name }}: voturi, prezență, inițiative, luări de cuvânt, istoric de partid.{% endblock %}
 {% block head %}<link rel="alternate" type="application/rss+xml" title="Activitatea lui {{ m.name }}" href="/feed/parlamentar/{{ m.id }}.xml">{% endblock %}
@@ -58,7 +58,7 @@
     <h6 class="section-label"><i>how_to_vote</i> Voturi recente {% if votes %}<a class="small-text link" href="/parlamentar/{{ m.id }}/voturi">toate</a>{% endif %}</h6>
     {% if votes %}
     <div class="table-wrap"><table class="data"><tbody>
-    {% for v in votes %}<tr><td class="small-text muted" style="white-space:nowrap">{{ v.voted_at|date_ro }}</td><td><a href="/vot/{{ v.id }}">{{ v.description }}</a>{{ vote_subject(v) }}{% if v.against_group %}<br><span class="small-text" style="color:var(--tertiary)"><i class="small">call_split</i> diferit de grup ({{ v.group_choice|choice }})</span>{% endif %}</td><td><span class="choice {{ v.choice|choice_class }}">{{ v.choice|choice }}</span></td></tr>{% endfor %}
+    {% for v in votes %}<tr><td class="small-text muted" style="white-space:nowrap">{{ v.voted_at|date_ro }}</td><td>{{ vote_text(v) }}{% if v.against_group %}<br><span class="small-text" style="color:var(--tertiary)"><i class="small">call_split</i> diferit de grup ({{ v.group_choice|choice }})</span>{% endif %}</td><td><span class="choice {{ v.choice|choice_class }}">{{ v.choice|choice }}</span></td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}<p class="muted">Niciun vot nominal colectat încă.</p>{% endif %}
   </div>

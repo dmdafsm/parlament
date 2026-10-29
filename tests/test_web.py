@@ -173,3 +173,16 @@ def test_earlier_mandates(client, database_url):
     # The votes of the current legislature are not counted as absences in the earlier mandate.
     with db.connect(database_url) as conn:
         assert analytics.members(conn, 2020)[0]["attendance"] is None
+
+
+def test_vote_title_starts_at_the_bill_number():
+    from parlament.web.filters import vote_title
+
+    assert vote_title({"description": "Vot final", "subject": "Vot final Respingere PL 480/2026 pentru exemplu"}) == (
+        "PL 480/2026 pentru exemplu"
+    )
+    assert vote_title({"description": "PHCD 68/2026", "subject": "PHCD 68/2026 PHCD 68/2026 privind exemplul"}) == (
+        "PHCD 68/2026 privind exemplul"
+    )
+    assert vote_title({"description": "Prezenta", "subject": ""}) == "Prezenta"
+    assert vote_title({"description": "L1/2026 vot final: Exemplu", "subject": None}) == "L1/2026 vot final: Exemplu"

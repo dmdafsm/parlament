@@ -96,3 +96,6 @@ def test_fill_subjects_names_the_bill(conn):
     vote = next(v for v in cdep_votes.parse_day(fixture("cdep_vote_day.html"), DAY) if v["idv"] == "40002")
     cdep_votes.store_vote(conn, {**vote, "description": "Vot final adoptare"}, None)
     assert conn.execute("SELECT bill_ref FROM votes WHERE id = 'cd-40002'").fetchone()["bill_ref"] == "PL-x 501/2025"
+    # A number we have no bill page for ('PHCD 68/2026') is not enough: its subject is read as well.
+    conn.execute("UPDATE votes SET subject = NULL, bill_id = NULL, bill_ref = 'PHCD 9/2025' WHERE id = 'cd-40002'")
+    assert cdep_votes.fill_subjects(conn, pages) == 1
