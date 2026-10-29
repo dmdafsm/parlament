@@ -86,11 +86,11 @@ def last_update(conn: Connection) -> dt.datetime | None:
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, conn: Connection = Depends(get_conn)):
     counts = conn.execute(
-        """SELECT (SELECT count(*) FROM members WHERE in_office AND chamber = 'cd' AND legislature = %(leg)s) AS
+        f"""SELECT (SELECT count(*) FROM members WHERE in_office AND chamber = 'cd' AND legislature = %(leg)s) AS
                deputies,
                   (SELECT count(*) FROM members WHERE in_office AND chamber = 'senat' AND legislature = %(leg)s) AS
                       senators,
-                  (SELECT count(*) FROM bills) AS bills,
+                  (SELECT count(*) FROM bills WHERE {analytics.ONE_PAGE_PER_BILL}) AS bills,
                   (SELECT count(*) FROM votes WHERE NOT is_test) AS votes""",
         {"leg": CONF.legislature},
     ).fetchone()
