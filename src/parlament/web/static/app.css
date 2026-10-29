@@ -68,3 +68,6 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
   .member-head { --_margin: 0.5rem 0; }
   .member-head h4 { font-size: 1.6rem; overflow-wrap: break-word; }
 }
+
+/* A long name wraps inside its table cell instead of running over the next columns. */
+table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }

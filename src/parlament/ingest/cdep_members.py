@@ -183,7 +183,8 @@ def parse_profile(page: str) -> Profile:
     heading = tree.css_first("div.profile-dep h1, h1.mp-profile-name2025")
     if heading is None:
         raise ParseError("cdep profile: missing name heading")
-    profile = Profile(name=node_text(heading))
+    # Members of the Permanent Bureau have their office after a line break ('Ana POP<br>chestor al Camerei ...').
+    profile = Profile(name=node_text(html(re.split(r"<br\s*/?>", heading.html or "", maxsplit=1)[0])))
     picture = tree.css_first("div.profile-pic-dep, div.mp-profile-photo2025")
     if picture is not None:
         image = picture.css_first("img")
