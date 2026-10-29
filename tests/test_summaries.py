@@ -42,6 +42,23 @@ def test_memoranda(conn, monkeypatch):
     assert bill_texts.pending(conn) == []
 
 
+def test_ocr_of_scanned_memoranda(conn):
+    seed(conn)
+    conn.execute(
+        "INSERT INTO bill_texts (bill_id, url, text) VALUES ('cd-22001', 'https://www.cdep.ro/scan.pdf', NULL),"
+        " ('senat-901', 'https://www.senat.ro/blank.pdf', NULL)"
+    )
+    conn.commit()
+    # The blank scan yields no text and stays NULL; the other is read and becomes summarisable.
+    read = {b"https://www.cdep.ro/scan.pdf": MEMO, b"https://www.senat.ro/blank.pdf": "  \n"}
+    fetcher = Pdfs()
+    assert bill_texts.ocr(conn, fetcher, read=read.__getitem__) == 1
+    assert fetcher.urls == [("cdep", "https://www.cdep.ro/scan.pdf"), ("senat", "https://www.senat.ro/blank.pdf")]
+    stored = {row["bill_id"]: row["text"] for row in conn.execute("SELECT * FROM bill_texts")}
+    assert stored["cd-22001"].startswith("EXPUNERE DE MOTIVE") and stored["senat-901"] is None
+    assert [row["bill_id"] for row in bill_texts.scanned(conn)] == ["senat-901"]
+
+
 def test_excerpts_find_the_proposal_in_ocr_text():
     context, proposal = summaries.excerpts(MEMO)
     assert context.startswith("EXPUNERE DE MOTIVE") and "Schimbdri" not in context
