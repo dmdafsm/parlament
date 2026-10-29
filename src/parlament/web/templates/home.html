@@ -1,9 +1,20 @@
 {% extends "base.html" %}
 {% from "macros.html" import split, stage_chip, vote_text %}
 {% block content %}
-<h4 class="page-title">Ce face Parlamentul României</h4>
-<p class="muted">Cine sunt cei {{ counts.deputies }} deputați și {{ counts.senators }} senatori, ce legi propun, cum votează și cât de des sunt prezenți.
-{% if updated %}Actualizat la {{ updated|date_ro(true) }}.{% endif %}</p>
+<section class="hero brand">
+  <img class="hero-art" src="{{ asset('hemicycle.svg') }}" alt="">
+  <div class="hero-text">
+    <h3 class="no-margin">Ce face Parlamentul României</h3>
+    <p>Cine sunt cei {{ counts.deputies }} deputați și {{ counts.senators }} senatori, ce legi propun, cum votează și cât de des sunt prezenți.
+    {% if updated %}Actualizat la {{ updated|date_ro(true) }}.{% endif %}</p>
+    <div class="grid">
+      <a class="s6 m3 stat" href="/parlamentari?camera=cd"><div class="value">{{ counts.deputies }}</div><div class="label">deputați în funcție</div></a>
+      <a class="s6 m3 stat" href="/parlamentari?camera=senat"><div class="value">{{ counts.senators }}</div><div class="label">senatori în funcție</div></a>
+      <a class="s6 m3 stat" href="/legi"><div class="value">{{ counts.bills|number }}</div><div class="label">proiecte urmărite</div></a>
+      <a class="s6 m3 stat" href="/voturi"><div class="value">{{ counts.votes|number }}</div><div class="label">voturi în plen</div></a>
+    </div>
+  </div>
+</section>
 
 <div class="grid">
   <article class="s12 m6 l4 round">
@@ -23,12 +34,7 @@
     <p class="small-text muted">Fiecare circumscripție (cele 41 de județe, București și Diaspora) alege deputați și senatori. Minoritățile naționale au câte un deputat ales la nivel național.</p>
   </article>
   <article class="s12 m6 l8 round">
-    <div class="grid">
-      <a class="s6 l3 stat" href="/parlamentari?camera=cd"><div class="value">{{ counts.deputies }}</div><div class="label">deputați în funcție</div></a>
-      <a class="s6 l3 stat" href="/parlamentari?camera=senat"><div class="value">{{ counts.senators }}</div><div class="label">senatori în funcție</div></a>
-      <a class="s6 l3 stat" href="/legi"><div class="value">{{ counts.bills|number }}</div><div class="label">proiecte urmărite</div></a>
-      <a class="s6 l3 stat" href="/voturi"><div class="value">{{ counts.votes|number }}</div><div class="label">voturi în plen</div></a>
-    </div>
+    <h6><i>leaderboard</i> Clasamente</h6>
     <nav class="wrap">
       <a class="chip" href="/parlamentari?sort=prezenta"><i>event_available</i><span>Cei mai prezenți</span></a>
       <a class="chip" href="/parlamentari?sort=absente"><i>event_busy</i><span>Cele mai multe absențe</span></a>

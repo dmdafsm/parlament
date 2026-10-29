@@ -88,3 +88,33 @@ table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }
 .cv-text::first-line { font-weight: 600; }
 /* A select shows its choice on one line ("Ambele camere" wrapped in narrow filter columns). */
 .field > select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Bold brand surfaces: the deep violet gradient of the header, the home hero and the profile head.
+   Long text, lists and tables stay on the light background. */
+:root { --brand-deep: #3b1d71; --brand: #6a4fa3; --brand-soft: #d3bbff; --brand-pale: #ebddff; }
+.brand { background: linear-gradient(135deg, var(--brand-deep), var(--brand)); color: #fff; }
+header.brand { background: linear-gradient(90deg, var(--brand-deep), var(--brand)); }
+header.brand h6, header.brand i { color: #fff; }
+header.brand .field > input { color: #fff; background: rgb(255 255 255 / 0.12); border-color: rgb(255 255 255 / 0.45); }
+header.brand .field > input::placeholder { color: var(--brand-pale); }
+.hero { position: relative; overflow: hidden; border-radius: 1.5rem; padding: 2rem; margin: 1rem 0 1.5rem; }
+.hero > :not(.hero-art) { position: relative; }
+.hero h3, .hero h4 { color: #fff; font-weight: 700; }
+.hero p, .hero .muted { color: var(--brand-pale); }
+.hero a.link { color: #fff; text-decoration: underline; }
+.hero .stat { background: rgb(255 255 255 / 0.1); color: #fff; }
+.hero .stat:hover { background: rgb(255 255 255 / 0.18); }
+.hero .stat .label { color: var(--brand-pale); }
+.hero .button.border { color: #fff; border-color: rgb(255 255 255 / 0.6); }
+.hero .chip { color: #fff; border-color: rgb(255 255 255 / 0.6); background: transparent; }
+.hero .chip.primary { color: var(--brand-deep); background: #fff; border-color: #fff; }
+.hero .chip.error { color: var(--on-error-container); background: var(--error-container); border-color: transparent; }
+.hero .chip i, .hero .button i { color: inherit; }
+.hero .portrait { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.85); }
+.hero-art { position: absolute; right: 1.5rem; bottom: 0; width: 36%; max-width: 30rem; pointer-events: none; }
+.hero-text { max-width: 62%; }
+@media (max-width: 992px) {
+  .hero-text { max-width: none; }
+  .hero-art { width: 55%; right: -2rem; opacity: 0.2; }
+}
+@media (max-width: 600px) { .hero { padding: 1.25rem; border-radius: 1rem; } .hero h3 { font-size: 1.9rem; line-height: 2.3rem; } }

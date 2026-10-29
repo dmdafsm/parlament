@@ -4,7 +4,7 @@
 {% block description %}Activitatea parlamentară a lui {{ m.name }}: voturi, prezență, inițiative, luări de cuvânt, istoric de partid.{% endblock %}
 {% block head %}<link rel="alternate" type="application/rss+xml" title="Activitatea lui {{ m.name }}" href="/feed/parlamentar/{{ m.id }}.xml">{% endblock %}
 {% block content %}
-<div class="row top-align large-margin member-head">
+<section class="hero brand row top-align member-head">
   <img class="portrait" src="/foto/{{ m.id }}?marime=mare" alt="Fotografia lui {{ m.name }}" referrerpolicy="no-referrer">
   <div class="max">
     <h4 class="no-margin">{{ m.name }}</h4>
@@ -26,7 +26,7 @@
       {% if d.email %}<a class="button border small" href="mailto:{{ d.email }}"><i>mail</i><span>{{ d.email }}</span></a>{% endif %}
     </nav>
   </div>
-</div>
+</section>
 
 <div class="grid">
   <div class="s6 m3 stat"><div class="value">{{ m.attendance|pct }}</div><div class="label">prezență la vot{% if m.attendance_base %} ({{ m.attendance_present }} din {{ m.attendance_base }} {{ 'voturi' if m.attendance_unit == 'vote' else 'ședințe' }}){% endif %}{% if medians %}<br>mediana camerei: {{ medians.attendance|pct }}{% endif %}</div></div>
