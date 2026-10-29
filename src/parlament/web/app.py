@@ -2,10 +2,13 @@
 
 import datetime as dt
 import re
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import anyio
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -34,19 +37,47 @@ templates = Jinja2Templates(directory=HERE / "templates")
 filters.register(templates.env)
 
 _pool: ConnectionPool | None = None
+_slots: anyio.Semaphore | None = None
+POOL_SIZE = 10
 
 
 def pool() -> ConnectionPool:
     global _pool
     if _pool is None:
-        _pool = ConnectionPool(CONF.database_url, min_size=1, max_size=10, kwargs={"row_factory": dict_row}, open=True)
+        _pool = ConnectionPool(
+            CONF.database_url, min_size=1, max_size=POOL_SIZE, kwargs={"row_factory": dict_row}, open=True
+        )
         with _pool.connection() as conn:
             analytics.ensure_overview(conn)
     return _pool
 
 
-def get_conn() -> Iterator[Connection]:
-    with pool().connection() as conn:
+@asynccontextmanager
+async def connection() -> AsyncIterator[Connection]:
+    """A pooled connection for one request.
+
+    Requests wait for a free slot in the event loop, not in a worker thread, so a connection is always free when
+    taken, and it is returned without a thread. Taking and returning are shielded from cancellation: a request
+    the browser gives up on (photos scrolled past, a filter changed) still returns its connection. Waiting in
+    threads and returning through them let a burst of such requests check out every connection and stop the site.
+    """
+    global _slots
+    if _slots is None:
+        _slots = anyio.Semaphore(POOL_SIZE)
+    async with _slots:
+        with anyio.CancelScope(shield=True):
+            conn = await run_in_threadpool(lambda: pool().getconn())
+        try:
+            yield conn
+        finally:
+            try:
+                conn.rollback()  # the site only reads; a quick round trip
+            finally:
+                pool().putconn(conn)  # a broken connection is discarded by the pool
+
+
+async def get_conn() -> AsyncIterator[Connection]:
+    async with connection() as conn:
         yield conn
 
 
@@ -481,11 +512,15 @@ def open_data_file(name: str):
 
 
 @app.get("/foto/{member_id}")
-def photo(member_id: str, marime: str = Query("mic", pattern="^(mic|mare)$"), conn: Connection = Depends(get_conn)):
+async def photo(member_id: str, marime: str = Query("mic", pattern="^(mic|mare)$")):
     path = photos.photo_path(member_id, marime)
     if re.fullmatch(r"[a-z]+-\d{4}-[0-9a-f-]+", member_id) and path.exists():
         return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
-    row = conn.execute("SELECT photo_url FROM members WHERE id = %s", (member_id,)).fetchone()
+    # Only a photo not stored here needs the database: a page of 400 members does not tie up the pool.
+    async with connection() as conn:
+        row = await run_in_threadpool(
+            lambda: conn.execute("SELECT photo_url FROM members WHERE id = %s", (member_id,)).fetchone()
+        )
     if row is None or not row["photo_url"]:
         return RedirectResponse("/static/avatar.svg")
     return RedirectResponse(row["photo_url"])

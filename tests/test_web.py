@@ -17,6 +17,7 @@ def client(database_url, monkeypatch):
         seed(conn)
     monkeypatch.setattr(web, "CONF", web.CONF.__class__(**{**web.CONF.__dict__, "database_url": database_url}))
     monkeypatch.setattr(web, "_pool", None)
+    monkeypatch.setattr(web, "_slots", None, raising=False)
     with TestClient(web.app) as test_client:
         yield test_client
     if web._pool is not None:
@@ -211,3 +212,38 @@ def test_home_counts_each_bill_once(client, database_url):
         total = conn.execute("SELECT count(*) AS n FROM bills").fetchone()["n"]
     assert listed < total
     assert f'<div class="value">{listed}</div><div class="label">proiecte urmărite' in client.get("/").text
+
+
+def test_a_burst_of_cancelled_requests_does_not_stop_the_site(client):
+    import contextlib
+    import socket
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    import httpx
+    import uvicorn
+
+    from parlament.web import app as web
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(web.app, port=port, log_level="error", lifespan="off"))
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    while not server.started:
+        time.sleep(0.01)
+    base = f"http://127.0.0.1:{port}"
+
+    def given_up(path):  # a browser leaving a page while its photos and profiles still load
+        with contextlib.suppress(httpx.HTTPError):
+            httpx.get(base + path, timeout=0.02)
+
+    try:
+        with ThreadPoolExecutor(100) as browsers:
+            list(browsers.map(given_up, ["/parlamentar/cd-2024-1", "/foto/nu-exista"] * 150))
+        assert httpx.get(base + "/parlamentari", timeout=10).status_code == 200
+    finally:
+        server.should_exit = True
+        thread.join(5)
