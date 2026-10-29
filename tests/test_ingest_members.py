@@ -182,3 +182,21 @@ def test_deputy_cv_other_layouts():
     assert [s["section"] for s in cv] == ["Experiență profesională", "Activitate civică"]
     assert cv[0]["entries"] == [{"label": "2008 - în prezent", "text": "Deputat"}]
     assert cv[1]["entries"][0]["text"] == "Membru fondator, Asociația Exemplu\nVoluntar, Crucea Exemplu"
+
+
+def test_group_and_party_switch_in_the_2025_layout():
+    profile = cdep_members.parse_profile(fixture("cdep_profile_switch.html"))
+    # The period follows the group link in the same cell.
+    assert [(g["group_name"], g["start"], g["end"]) for g in profile.groups] == [
+        ("Grupul parlamentar PEV", None, dt.date(2026, 5, 1)),
+        ("Grupul parlamentar Exemplu Nou", dt.date(2026, 5, 1), None),
+    ]
+    assert [(r["role"], r["start"], r["end"]) for r in profile.roles] == [
+        ("Lider", None, dt.date(2025, 11, 1)),
+        ("Vicelider", dt.date(2025, 11, 1), dt.date(2026, 5, 1)),
+    ]
+    # The party the old one turned into starts when the old one ended.
+    assert [(p["party_name"], p["start"], p["end"]) for p in profile.parties] == [
+        ("Partidul Exemplu Vechi", None, dt.date(2026, 5, 1)),
+        ("Grupul parlamentar Exemplu Nou", dt.date(2026, 5, 1), None),
+    ]

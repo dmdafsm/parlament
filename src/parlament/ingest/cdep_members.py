@@ -1,6 +1,7 @@
 """Deputies from cdep.ro: list, profile, group/party history, committees, activity counters and CV."""
 
 import datetime as dt
+import itertools
 import json
 import re
 from dataclasses import dataclass, field
@@ -246,7 +247,16 @@ def _parse_parties(box) -> list[dict]:
         last = texts[-1] if texts else ""
         period = parse_period(last) if ("din" in last or "până" in last) else Period(None, None)
         parties.append({"party": short, "party_name": name, "start": period.start, "end": period.end})
-    return parties
+    return _chain(parties)
+
+
+def _chain(periods: list[dict]) -> list[dict]:
+    """A party that took over from the previous one ('când POT se transforma în ...') has no start of its own:
+    it starts when the previous one ended."""
+    for before, after in itertools.pairwise(periods):
+        if after["start"] is None and before["end"] is not None:
+            after["start"] = before["end"]
+    return periods
 
 
 def _parse_groups(box) -> tuple[list[dict], list[dict]]:
@@ -260,7 +270,12 @@ def _parse_groups(box) -> tuple[list[dict], list[dict]]:
         rest = cells
         if link is not None and "structura2015.gp" in (link.attributes.get("href") or ""):
             current = node_text(link)
-            period = parse_period(node_text(cells[1])) if len(cells) > 1 else Period(None, None)
+            # The 2025 layout writes the period after the link in the same cell ('<a>...</a> - membru din mai 2026');
+            # the older one in the next cell.
+            after = node_text(cells[0])[len(current) :]
+            period = parse_period(
+                after if ("din" in after or "până" in after) else node_text(cells[1]) if len(cells) > 1 else ""
+            )
             groups.append(
                 {
                     "group_source_id": query_param(link.attributes["href"], "idg"),
