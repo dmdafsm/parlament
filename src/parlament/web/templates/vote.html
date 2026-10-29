@@ -5,7 +5,7 @@
 <p class="small-text muted no-margin">{{ v.chamber|chamber }} · {{ v.voted_at|date_ro(true) }}{% if v.subject %} · {{ v.description }}{% endif %}{% if v.result %} · <b>{{ v.result }}</b>{% endif %}</p>
 <h5 class="page-title">{{ v|vote_title }}</h5>
 
-{% if bill %}<p><a class="chip primary" href="/lege/{{ bill.id }}"><i>gavel</i><span>{{ bill.number }} – {{ bill.title[:90] }}</span></a></p>{% endif %}
+{% if bill %}<p><a class="chip primary wrap-text" href="/lege/{{ bill.id }}"><i>gavel</i><span>{{ bill.number }} – {{ bill.title|truncate(90) }}</span></a></p>{% endif %}
 <div class="grid">
   <div class="s6 m3 stat"><div class="value" style="color:#2e7d32">{{ v.yes }}</div><div class="label">pentru</div></div>
   <div class="s6 m3 stat"><div class="value" style="color:#c62828">{{ v.no }}</div><div class="label">contra</div></div>
@@ -27,7 +27,7 @@
 {% endfor %}
 {% if absent %}<details><summary class="section-label bold">Nu figurează ca prezenți ({{ absent|length }})</summary>
 <p class="small-text muted">{{ 'Deputați' if v.chamber == 'cd' else 'Senatori' }} în funcție la data votului care nu apar ca prezenți în lista nominală (absenți, în concediu, în delegație sau la alte activități – sursa nu precizează motivul).</p>
-{% for group in absent|groupby("group_short", default="Fără grup") %}
+{% for group in absent|groupby("group_short") %}
 <p><b>{{ group.grouper }}</b> <span class="small-text muted">({{ group.list|length }})</span>: {% for a in group.list %}<a class="link" href="/parlamentar/{{ a.id }}">{{ a.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
 {% endfor %}</details>{% endif %}
 {% else %}<p class="muted">Votul nominal nu a fost colectat pentru acest vot.</p>{% endif %}

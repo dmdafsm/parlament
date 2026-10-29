@@ -99,3 +99,6 @@ def test_fill_subjects_names_the_bill(conn):
     # A number we have no bill page for ('PHCD 68/2026') is not enough: its subject is read as well.
     conn.execute("UPDATE votes SET subject = NULL, bill_id = NULL, bill_ref = 'PHCD 9/2025' WHERE id = 'cd-40002'")
     assert cdep_votes.fill_subjects(conn, pages) == 1
+    # A vote linked to its bill is read too: its description alone says only 'Vot final respingere'.
+    conn.execute("UPDATE votes SET subject = NULL, bill_id = 'cd-22001' WHERE id = 'cd-40002'")
+    assert cdep_votes.fill_subjects(conn, pages) == 1

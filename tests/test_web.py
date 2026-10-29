@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from parlament import analytics, db
 from parlament.ingest import cdep_members
 from parlament.ingest.cdep_members import ListedDeputy, Profile
-from tests.seed import seed
+from tests.seed import deputy, seed
 
 
 @pytest.fixture
@@ -186,3 +186,14 @@ def test_vote_title_starts_at_the_bill_number():
     )
     assert vote_title({"description": "Prezenta", "subject": ""}) == "Prezenta"
     assert vote_title({"description": "L1/2026 vot final: Exemplu", "subject": None}) == "L1/2026 vot final: Exemplu"
+
+
+def test_absent_members_without_a_group(client, database_url):
+    with db.connect(database_url) as conn:
+        # A deputy in office on the vote day, not in the nominal list and in no group.
+        deputy(conn, "99", "Ion FĂRĂGRUP", "PSD", "1")
+        conn.execute("UPDATE members SET group_id = NULL WHERE id = 'cd-2024-99'")
+        conn.commit()
+    response = client.get("/vot/cd-40002")
+    assert response.status_code == 200
+    assert "<b>Fără grup</b>" in response.text

@@ -119,7 +119,7 @@ def ingest_memoranda(
 
 @ingest_app.command("vote-subjects")
 def ingest_vote_subjects(limit: int = typer.Option(None), from_raw: bool = CacheOption) -> None:
-    """Subiectul voturilor Camerei fara proiect in descriere (din pagina votului nominal)."""
+    """Subiectul voturilor Camerei (din pagina votului nominal)."""
     with collecting(from_raw) as (conn, fetcher):
         typer.echo(f"Subiecte de vot: {cdep_votes.fill_subjects(conn, fetcher, limit)}")
         cdep_bills.relink(conn)

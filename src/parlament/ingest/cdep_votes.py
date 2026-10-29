@@ -148,11 +148,11 @@ def nominal_subject(page: str) -> str | None:
 
 
 def fill_subjects(conn: psycopg.Connection, fetcher: Fetcher, limit: int | None = None) -> int:
-    """Subject and bill reference, from the nominal page, of Chamber votes not linked to a stored bill: the
-    description names no bill ('Vot final'), or only a number we have no page for ('PHCD 68/2026')."""
+    """Subject and bill reference of Chamber votes, from the nominal page: the description names no bill
+    ('Vot final respingere') or only its number ('PHCD 68/2026'), even when the vote is linked to one."""
     rows = conn.execute(
         """SELECT id, source_id FROM votes
-           WHERE chamber = 'cd' AND NOT is_test AND bill_id IS NULL AND subject IS NULL
+           WHERE chamber = 'cd' AND NOT is_test AND subject IS NULL
            ORDER BY voted_at DESC"""
     ).fetchall()
     log = db.log_start(conn, SOURCE, f"vote subjects ({len(rows)})")

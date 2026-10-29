@@ -353,8 +353,8 @@ def vote_page(request: Request, vote_id: str, conn: Connection = Depends(get_con
     ).fetchall()
     absent = (
         conn.execute(
-            """SELECT m.id, m.name,
-                   g.short_name AS group_short FROM members m LEFT JOIN parl_groups g ON g.id = m.group_id
+            """SELECT m.id, m.name, coalesce(g.short_name, 'Fără grup') AS group_short
+           FROM members m LEFT JOIN parl_groups g ON g.id = m.group_id
            WHERE m.chamber = %(chamber)s AND m.id NOT IN (SELECT member_id FROM vote_records WHERE vote_id = %(id)s)
              AND %(day)s >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
              AND (m.mandate_end IS NULL OR %(day)s <= m.mandate_end)
