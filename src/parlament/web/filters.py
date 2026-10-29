@@ -2,6 +2,7 @@
 
 import datetime as dt
 import hashlib
+import re
 from functools import cache
 from pathlib import Path
 
@@ -46,6 +47,19 @@ def number(value) -> str:
     return "–" if value is None else f"{int(value):,}".replace(",", ".")
 
 
+BILL_REF = re.compile(r"\b(?:P[LH][\s-]*x?|PH\s*CD|BP)\s*\d+\s*/\s*\d{4}", re.I)
+
+
+def vote_title(vote) -> str:
+    """What a vote was about. A Chamber vote's subject repeats its type and number ('Vot final Respingere
+    PL 480/2026 pentru ...'); the title starts at the last bill number. Otherwise the description."""
+    subject = vote.get("subject")
+    if not subject:
+        return vote["description"]
+    refs = list(BILL_REF.finditer(subject))
+    return subject[refs[-1].start() :] if refs else subject
+
+
 @cache
 def asset(path: str) -> str:
     """'/static/app.css?v=<content hash>': static files are cached long, the hash changes with the content."""
@@ -61,6 +75,7 @@ def register(env) -> None:
         chamber=chamber_label,
         role=role_label,
         number=number,
+        vote_title=vote_title,
         choice=lambda value: CHOICES.get(value, value),
         choice_class=lambda value: CHOICE_CLASS.get(value, ""),
     )

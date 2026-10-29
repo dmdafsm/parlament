@@ -27,6 +27,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 | `ingest/bill_texts.py` | `bill_texts` |
 | `summaries.py` (run by hand with a local model, [ADR 0006](engineering/decisions/0006-local-llm-summaries.md)) | `bill_summaries` |
 | `ingest/photos.py` | files under `data/photos/` |
+| `analytics.py` (`refresh`, after each collection, [ADR 0007](engineering/decisions/0007-stored-member-indicators.md)) | materialized view `member_overview` |
 | `db.py` | `schema_migrations`, `ingest_log` |
 
 ## Identifiers
@@ -37,7 +38,7 @@ cdep.ro, senat.ro ──► parlament ingest … (httpx, selectolax) ──► P
 
 ## Indicators
 
-Defined in `analytics.py` (`MEMBER_OVERVIEW`) and explained on `/metodologie`: vote attendance (deputies: per nominal vote within the mandate; senators: sessions as published), party-line voting (strict majority of the group present), activity counters as published, group/party changes.
+Defined in `analytics.py` (`MEMBER_OVERVIEW`, stored as `member_overview` when data is collected) and explained on `/metodologie`: vote attendance (deputies: per nominal vote within the mandate; senators: sessions as published), party-line voting (strict majority of the group present), activity counters as published, group/party changes.
 
 ## Search
 

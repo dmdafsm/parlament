@@ -1,6 +1,7 @@
 """Deputies from cdep.ro: list, profile, group/party history, committees, activity counters and CV."""
 
 import datetime as dt
+import itertools
 import json
 import re
 from dataclasses import dataclass, field
@@ -12,6 +13,7 @@ from parlament.config import CURRENT_LEGISLATURE
 from parlament.fetch import Fetcher, FetchError
 from parlament.parsing import (
     ParseError,
+    block_text,
     clean,
     fold,
     html,
@@ -183,7 +185,8 @@ def parse_profile(page: str) -> Profile:
     heading = tree.css_first("div.profile-dep h1, h1.mp-profile-name2025")
     if heading is None:
         raise ParseError("cdep profile: missing name heading")
-    profile = Profile(name=node_text(heading))
+    # Members of the Permanent Bureau have their office after a line break ('Ana POP<br>chestor al Camerei ...').
+    profile = Profile(name=node_text(html(re.split(r"<br\s*/?>", heading.html or "", maxsplit=1)[0])))
     picture = tree.css_first("div.profile-pic-dep, div.mp-profile-photo2025")
     if picture is not None:
         image = picture.css_first("img")
@@ -244,7 +247,16 @@ def _parse_parties(box) -> list[dict]:
         last = texts[-1] if texts else ""
         period = parse_period(last) if ("din" in last or "până" in last) else Period(None, None)
         parties.append({"party": short, "party_name": name, "start": period.start, "end": period.end})
-    return parties
+    return _chain(parties)
+
+
+def _chain(periods: list[dict]) -> list[dict]:
+    """A party that took over from the previous one ('când POT se transforma în ...') has no start of its own:
+    it starts when the previous one ended."""
+    for before, after in itertools.pairwise(periods):
+        if after["start"] is None and before["end"] is not None:
+            after["start"] = before["end"]
+    return periods
 
 
 def _parse_groups(box) -> tuple[list[dict], list[dict]]:
@@ -258,7 +270,12 @@ def _parse_groups(box) -> tuple[list[dict], list[dict]]:
         rest = cells
         if link is not None and "structura2015.gp" in (link.attributes.get("href") or ""):
             current = node_text(link)
-            period = parse_period(node_text(cells[1])) if len(cells) > 1 else Period(None, None)
+            # The 2025 layout writes the period after the link in the same cell ('<a>...</a> - membru din mai 2026');
+            # the older one in the next cell.
+            after = node_text(cells[0])[len(current) :]
+            period = parse_period(
+                after if ("din" in after or "până" in after) else node_text(cells[1]) if len(cells) > 1 else ""
+            )
             groups.append(
                 {
                     "group_source_id": query_param(link.attributes["href"], "idg"),
@@ -382,15 +399,20 @@ def parse_cv(page: str) -> list[dict]:
         tables = tree.css(CV_TABLES)
         pairs = tree.css("div.cv-eu-pass-container2025")
         if tables:
-            rows = [[node_text(c) for c in tr.iter() if c.tag == "td"] for t in tables for tr in t.css("tr")]
+            rows = [_cells([c for c in tr.iter() if c.tag == "td"]) for t in tables for tr in t.css("tr")]
             entries = _cv_rows(rows)
         elif pairs:
-            entries = _cv_rows([[node_text(c) for c in pair.iter() if c.tag == "div"] for pair in pairs])
+            entries = _cv_rows([_cells([c for c in pair.iter() if c.tag == "div"]) for pair in pairs])
         else:
             entries = _cv_paragraphs(tree)
         if entries:
             sections.append({"section": title, "entries": entries})
     return sections
+
+
+def _cells(cells: list) -> list[str]:
+    """Label on one line; values keep their lines (job title, period, one line per role)."""
+    return [node_text(cells[0]), *(block_text(cell) for cell in cells[1:])] if cells else []
 
 
 def _cv_rows(rows: list[list[str]]) -> list[dict]:

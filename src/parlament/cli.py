@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 import typer
 
-from parlament import db
+from parlament import analytics, db
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import (
@@ -39,8 +39,10 @@ def collecting(from_raw: bool = False):
             yield conn, fetcher
         except BlockedError as error:
             db.close_running(conn, "blocked", str(error))
+            analytics.refresh(conn)  # what was stored before the block is shown
             typer.echo(f"OPRIT: {error}", err=True)
             raise typer.Exit(2) from error
+        analytics.refresh(conn)
 
 
 def _date(value: str) -> dt.date:
@@ -52,6 +54,7 @@ def init_db() -> None:
     """Creează sau actualizează schema bazei de date."""
     with db.connect() as conn:
         applied = db.migrate(conn)
+        analytics.refresh(conn)
     typer.echo(f"Migrari aplicate: {', '.join(applied) or 'niciuna (schema la zi)'}")
 
 
@@ -119,7 +122,7 @@ def ingest_memoranda(
 
 @ingest_app.command("vote-subjects")
 def ingest_vote_subjects(limit: int = typer.Option(None), from_raw: bool = CacheOption) -> None:
-    """Subiectul voturilor Camerei fara proiect in descriere (din pagina votului nominal)."""
+    """Subiectul voturilor Camerei (din pagina votului nominal)."""
     with collecting(from_raw) as (conn, fetcher):
         typer.echo(f"Subiecte de vot: {cdep_votes.fill_subjects(conn, fetcher, limit)}")
         cdep_bills.relink(conn)

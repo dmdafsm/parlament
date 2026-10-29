@@ -55,8 +55,12 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
 /* Biographies keep the line breaks the chamber published. */
 .cv-text { white-space: pre-line; }
 
+/* Beer gives any element with a '*-margin' child 'padding: 0.1px', which beats the card padding of
+   an article; keep the card's own padding (still set through --_padding by 'small-padding'). */
+article:has(> [class*="margin"]) { padding: var(--_padding); }
+
 /* Generated plain-language summary of a bill: set apart from the official data. */
-.summary { background: var(--secondary-container); color: var(--on-secondary-container); margin-block: 1rem; }
+.summary { background: var(--secondary-container); color: var(--on-secondary-container); margin-block: 1rem; box-shadow: none; }
 .summary h6 { display: flex; align-items: center; gap: 0.5rem; margin-top: 0; }
 /* Long group names ("Grupul parlamentar al Partidului ...") wrap inside the chip on a phone. */
 .chip.wrap-text { max-inline-size: 100%; block-size: auto; min-block-size: 2rem; white-space: normal; text-align: start; padding-block: 0.25rem; }
@@ -68,3 +72,16 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
   .member-head { --_margin: 0.5rem 0; }
   .member-head h4 { font-size: 1.6rem; overflow-wrap: break-word; }
 }
+
+/* A long name wraps inside its table cell instead of running over the next columns. */
+table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }
+
+/* Foldable sections (groups of the members list, long lists on a profile). */
+.fold > summary { cursor: pointer; list-style: none; margin-top: 1.5rem; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary h6 { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; }
+.fold > summary h6 > i { transition: transform 0.15s; }
+.fold[open] > summary h6 > i { transform: rotate(90deg); }
+
+/* CV entries: the first line (job, school) stands out from the details under it. */
+.cv-text::first-line { font-weight: 600; }

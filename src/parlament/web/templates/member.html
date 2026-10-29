@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import bar, vote_subject %}
+{% from "macros.html" import bar, vote_text %}
 {% block title %}{{ m.name }} – {{ m.chamber|role }}{% endblock %}
 {% block description %}Activitatea parlamentară a lui {{ m.name }}: voturi, prezență, inițiative, luări de cuvânt, istoric de partid.{% endblock %}
 {% block head %}<link rel="alternate" type="application/rss+xml" title="Activitatea lui {{ m.name }}" href="/feed/parlamentar/{{ m.id }}.xml">{% endblock %}
@@ -19,7 +19,7 @@
       {% if d.validated_on %}Mandat validat la {{ d.validated_on|date_ro }}. {% endif %}
       {% if d.mandate_end_note %}{{ d.mandate_end_note }}. {% endif %}
     </p>
-    {% if mandates %}<p class="small-text no-margin">Alte mandate: {% for o in mandates %}<a class="link" href="{{ '/parlamentar/' ~ o.id if o.legislature == legislature else o.url }}"{% if o.legislature != legislature %} rel="noopener" target="_blank"{% endif %}>{{ o.chamber|role }} {{ o.legislature }}–{{ o.legislature + 4 }}{% if o.party %} ({{ o.party }}){% endif %}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% if mandates %}<p class="small-text no-margin">Alte mandate: {% for o in mandates %}{% set label %}{{ o.chamber|role }} {{ o.legislature }}–{{ o.legislature + 4 }}{% if o.party %} ({{ o.party }}){% endif %}{% endset %}{% if o.legislature == legislature %}<a class="link" href="/parlamentar/{{ o.id }}">{{ label }}</a>{% else %}{{ label }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     <nav class="wrap">
       <a class="button border small" href="{{ d.url }}" rel="noopener"><i>open_in_new</i><span>Profil oficial</span></a>
       <a class="button border small" href="/feed/parlamentar/{{ m.id }}.xml"><i>rss_feed</i><span>Urmărește (RSS)</span></a>
@@ -58,7 +58,7 @@
     <h6 class="section-label"><i>how_to_vote</i> Voturi recente {% if votes %}<a class="small-text link" href="/parlamentar/{{ m.id }}/voturi">toate</a>{% endif %}</h6>
     {% if votes %}
     <div class="table-wrap"><table class="data"><tbody>
-    {% for v in votes %}<tr><td class="small-text muted" style="white-space:nowrap">{{ v.voted_at|date_ro }}</td><td><a href="/vot/{{ v.id }}">{{ v.description }}</a>{{ vote_subject(v) }}{% if v.against_group %}<br><span class="small-text" style="color:var(--tertiary)"><i class="small">call_split</i> diferit de grup ({{ v.group_choice|choice }})</span>{% endif %}</td><td><span class="choice {{ v.choice|choice_class }}">{{ v.choice|choice }}</span></td></tr>{% endfor %}
+    {% for v in votes %}<tr><td class="small-text muted" style="white-space:nowrap">{{ v.voted_at|date_ro }}</td><td>{{ vote_text(v) }}{% if v.against_group %}<br><span class="small-text" style="color:var(--tertiary)"><i class="small">call_split</i> diferit de grup ({{ v.group_choice|choice }})</span>{% endif %}</td><td><span class="choice {{ v.choice|choice_class }}">{{ v.choice|choice }}</span></td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}<p class="muted">Niciun vot nominal colectat încă.</p>{% endif %}
   </div>
@@ -66,20 +66,23 @@
 
 <div class="grid">
   <div class="s12 l6">
-    <h6 class="section-label"><i>edit_document</i> Inițiative legislative ({{ initiatives|length }})</h6>
+    <details class="fold"><summary><h6><i>chevron_right</i>Inițiative legislative <span class="badge none">{{ initiatives|length }}</span></h6></summary>
     {% for b in initiatives[:30] %}<a class="row padding surface-container-low round small-margin" href="/lege/{{ b.id }}"><div class="max"><div class="small-text muted">{{ b.number }}</div>{{ b.title }}</div>{% if b.law %}<span class="chip small primary">{{ b.law }}</span>{% endif %}</a>
     {% else %}<p class="muted">Nicio inițiativă colectată.</p>{% endfor %}
-    {% if motions %}<h6 class="section-label"><i>front_hand</i> Moțiuni semnate</h6>
-      {% for x in motions %}<p><a class="link" href="{{ x.url }}" rel="noopener">{{ x.title }}</a> <span class="small-text muted">{{ x.result or '' }}</span></p>{% endfor %}{% endif %}
+    </details>
+    {% if motions %}<details class="fold"><summary><h6><i>chevron_right</i>Moțiuni semnate <span class="badge none">{{ motions|length }}</span></h6></summary>
+      {% for x in motions %}<p><a class="link" href="{{ x.url }}" rel="noopener">{{ x.title }}</a> <span class="small-text muted">{{ x.result or '' }}</span></p>{% endfor %}</details>{% endif %}
   </div>
   <div class="s12 l6">
-    <h6 class="section-label"><i>record_voice_over</i> Luări de cuvânt</h6>
+    <details class="fold"><summary><h6><i>chevron_right</i>Luări de cuvânt <span class="badge none">{{ m.speeches if m.speeches is not none else speeches|length }}</span></h6></summary>
     {% if m.chamber == 'senat' and speeches %}<p class="small-text muted">senat.ro publică doar ședințele în care senatorul a luat cuvântul, fără temă.</p>{% endif %}
     {% for s in speeches[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ s.sitting }}{% if s.duration %} · {{ s.duration }}{% endif %}</div>{% if s.topic %}{% if s.url %}<a class="link" href="{{ s.url }}" rel="noopener">{{ s.topic }}</a>{% else %}{{ s.topic }}{% endif %}{% endif %}</div>
     {% else %}<p class="muted">Nicio luare de cuvânt colectată.</p>{% endfor %}
-    <h6 class="section-label"><i>help</i> Întrebări și interpelări</h6>
+    </details>
+    <details class="fold"><summary><h6><i>chevron_right</i>Întrebări și interpelări <span class="badge none">{{ m.questions if m.questions is not none else questions|length }}</span></h6></summary>
     {% for x in questions[:20] %}<div class="padding surface-container-low round small-margin"><div class="small-text muted">{{ x.kind|capitalize }} {{ x.number }} · {{ x.asked_on|date_ro }}</div><a class="link" href="{{ x.url }}" rel="noopener">{{ x.title or 'fără titlu' }}</a>{% if x.recipient %}<div class="small-text muted">Către: {{ x.recipient }}{% if x.answered %} · are răspuns{% endif %}</div>{% endif %}</div>
     {% else %}<p class="muted">–</p>{% endfor %}
+    </details>
   </div>
 </div>
 

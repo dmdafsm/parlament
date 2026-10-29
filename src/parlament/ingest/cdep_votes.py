@@ -9,7 +9,7 @@ type ('Vot final - ...'). The XML nominal list has names but no profile ids: it 
 exactly one deputy of the legislature, otherwise the HTML nominal page (with profile links) is read instead.
 
 Neither list names the bill of a vote such as 'Vot final respingere'; the HTML nominal page does ('Subiect vot'),
-so `fill_subjects` reads it for votes with no bill reference.
+so `fill_subjects` reads it for votes not linked to a stored bill.
 """
 
 import datetime as dt
@@ -148,10 +148,11 @@ def nominal_subject(page: str) -> str | None:
 
 
 def fill_subjects(conn: psycopg.Connection, fetcher: Fetcher, limit: int | None = None) -> int:
-    """Subject and bill reference, from the nominal page, of Chamber votes whose description names no bill."""
+    """Subject and bill reference of Chamber votes, from the nominal page: the description names no bill
+    ('Vot final respingere') or only its number ('PHCD 68/2026'), even when the vote is linked to one."""
     rows = conn.execute(
         """SELECT id, source_id FROM votes
-           WHERE chamber = 'cd' AND NOT is_test AND bill_ref IS NULL AND subject IS NULL
+           WHERE chamber = 'cd' AND NOT is_test AND subject IS NULL
            ORDER BY voted_at DESC"""
     ).fetchall()
     log = db.log_start(conn, SOURCE, f"vote subjects ({len(rows)})")
@@ -164,7 +165,7 @@ def fill_subjects(conn: psycopg.Connection, fetcher: Fetcher, limit: int | None 
             continue
         with conn.transaction():
             conn.execute(
-                "UPDATE votes SET subject = %s, bill_ref = %s WHERE id = %s",
+                "UPDATE votes SET subject = %s, bill_ref = coalesce(%s, bill_ref) WHERE id = %s",
                 (subject, find_bill_ref(subject), row["id"]),
             )
         count += 1

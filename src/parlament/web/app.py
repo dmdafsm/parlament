@@ -40,6 +40,8 @@ def pool() -> ConnectionPool:
     global _pool
     if _pool is None:
         _pool = ConnectionPool(CONF.database_url, min_size=1, max_size=10, kwargs={"row_factory": dict_row}, open=True)
+        with _pool.connection() as conn:
+            analytics.ensure_overview(conn)
     return _pool
 
 
@@ -132,6 +134,7 @@ def members_page(
 ):
     county = int(judet) if judet else None  # forms send an empty value for "all"
     leg = CONF.legislature
+    # 'Mandat încetat' lists only the members whose mandate ended during the legislature.
     rows = analytics.members(conn, leg, camera or None, sort, q or None, grup or None, county, in_office=not fosti)
     sections: list[tuple[str, list[dict]]] = []
     if grupare:
@@ -215,7 +218,7 @@ def member_page(request: Request, member_id: str, conn: Connection = Depends(get
                WHERE cm.member_id = %s ORDER BY c.name""",
             (member_id,),
         ).fetchall(),
-        votes=analytics.member_votes(conn, member_id, limit=30),
+        votes=analytics.member_votes(conn, member_id, limit=10),
         initiatives=initiatives,
         questions=conn.execute(
             "SELECT * FROM questions WHERE member_id = %s ORDER BY asked_on DESC NULLS LAST LIMIT 50", (member_id,)
@@ -352,8 +355,8 @@ def vote_page(request: Request, vote_id: str, conn: Connection = Depends(get_con
     ).fetchall()
     absent = (
         conn.execute(
-            """SELECT m.id, m.name,
-                   g.short_name AS group_short FROM members m LEFT JOIN parl_groups g ON g.id = m.group_id
+            """SELECT m.id, m.name, coalesce(g.short_name, 'Fără grup') AS group_short
+           FROM members m LEFT JOIN parl_groups g ON g.id = m.group_id
            WHERE m.chamber = %(chamber)s AND m.id NOT IN (SELECT member_id FROM vote_records WHERE vote_id = %(id)s)
              AND %(day)s >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
              AND (m.mandate_end IS NULL OR %(day)s <= m.mandate_end)
@@ -505,7 +508,7 @@ def api_members(
     conn: Connection = Depends(get_conn),
 ):
     """Toți parlamentarii legislaturii curente, cu indicatorii de activitate."""
-    return analytics.members(conn, CONF.legislature, camera or None, sort, in_office=not fosti)
+    return analytics.members(conn, CONF.legislature, camera or None, sort, in_office=None if fosti else True)
 
 
 @app.get("/api/v1/parlamentari/{member_id}", tags=["API"])

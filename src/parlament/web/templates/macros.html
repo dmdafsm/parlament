@@ -32,5 +32,6 @@
 </nav>
 {%- endmacro %}
 
-{# What a vote was about: the linked bill, else the subject from the vote page. #}
-{% macro vote_subject(v) %}{% if v.bill_title %}<div class="small-text muted">{{ v.bill_number }} – {{ v.bill_title|truncate(150) }}</div>{% elif v.subject %}<div class="small-text muted">{{ v.subject|truncate(150) }}</div>{% endif %}{% endmacro %}
+{# A vote in a list: its type above (from a Chamber vote's subject), what it was about as the title, and the
+   linked bill when the title does not already say it. #}
+{% macro vote_text(v, chamber=false, link=true) %}{% if chamber or v.subject %}<div class="small-text muted">{% if chamber %}{{ v.chamber|chamber }}{% endif %}{% if chamber and v.subject %} · {% endif %}{% if v.subject %}{{ v.description }}{% endif %}</div>{% endif %}{% if link %}<a href="/vot/{{ v.id }}">{{ v|vote_title|truncate(220) }}</a>{% else %}<div>{{ v|vote_title|truncate(220) }}</div>{% endif %}{% if not v.subject and v.bill_title %}<div class="small-text muted">{{ v.bill_number }} – {{ v.bill_title|truncate(150) }}</div>{% endif %}{% endmacro %}
