@@ -1,6 +1,6 @@
 # Task: Px.n/REPO — outcome
 
-Status: planned / in progress / ready for review. Link the plan phase.
+Status: planned / in progress / ready for review.
 
 ## Analysis
 

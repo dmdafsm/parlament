@@ -56,7 +56,7 @@ python3 scripts/verify.py                  # format, lint, teste
 
 ## Documentație
 
-- [Planul și stadiul](docs/plan.md), [arhitectura](docs/architecture.md), [sursele de date](docs/surse-date.md)
+- [Arhitectura](docs/architecture.md), [sursele de date](docs/surse-date.md)
 - [AGENTS.md](AGENTS.md) și [CONTRIBUTING.md](CONTRIBUTING.md) pentru contribuții, [SECURITY.md](SECURITY.md) pentru vulnerabilități
 - Decizii: [date publice și date personale](docs/engineering/decisions/0001-public-data-and-personal-data.md), [PostgreSQL](docs/engineering/decisions/0002-postgresql.md), [stack web](docs/engineering/decisions/0003-web-stack.md), [Docker Compose](docs/engineering/decisions/0004-docker-compose.md)
 
