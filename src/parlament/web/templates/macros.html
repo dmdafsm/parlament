@@ -31,3 +31,6 @@
   {% if has_next %}<a class="button border" href="{{ base }}pagina={{ page + 1 }}">Mai departe<i>chevron_right</i></a>{% endif %}
 </nav>
 {%- endmacro %}
+
+{# What a vote was about: the linked bill, else the subject from the vote page. #}
+{% macro vote_subject(v) %}{% if v.bill_title %}<div class="small-text muted">{{ v.bill_number }} – {{ v.bill_title|truncate(150) }}</div>{% elif v.subject %}<div class="small-text muted">{{ v.subject|truncate(150) }}</div>{% endif %}{% endmacro %}

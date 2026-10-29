@@ -117,6 +117,14 @@ def ingest_memoranda(
         typer.echo(f"Expuneri de motive: {bill_texts.ingest(conn, fetcher, limit, site)}")
 
 
+@ingest_app.command("vote-subjects")
+def ingest_vote_subjects(limit: int = typer.Option(None), from_raw: bool = CacheOption) -> None:
+    """Subiectul voturilor Camerei fara proiect in descriere (din pagina votului nominal)."""
+    with collecting(from_raw) as (conn, fetcher):
+        typer.echo(f"Subiecte de vot: {cdep_votes.fill_subjects(conn, fetcher, limit)}")
+        cdep_bills.relink(conn)
+
+
 @ingest_app.command("ocr")
 def ingest_ocr(limit: int = typer.Option(None)) -> None:
     """OCR (Tesseract, romana) pe expunerile de motive scanate; foloseste PDF-urile salvate in data/raw."""
@@ -162,6 +170,7 @@ def ingest_votes(
             selected = [None] if latest else cdep_votes.sitting_days(first, last)
             count = cdep_votes.ingest_days(conn, fetcher, selected, nominal)
             typer.echo(f"Voturi Camera: {count} ({'ultima sedinta' if latest else f'{first} - {last}'})")
+            typer.echo(f"Subiecte de vot: {cdep_votes.fill_subjects(conn, fetcher)}")
             cdep_bills.relink(conn)
         if chamber in ("senat", "all"):
             count, codes = senat_votes.ingest(conn, fetcher, first, last, settings().legislature, nominal)

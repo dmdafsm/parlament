@@ -1,6 +1,6 @@
 import datetime as dt
 
-from parlament.ingest import cdep_votes
+from parlament.ingest import cdep_bills, cdep_votes
 from tests.conftest import fixture
 from tests.seed import seed
 
@@ -78,3 +78,21 @@ def test_ingest_falls_back_to_html_nominal(conn):
     assert conn.execute("SELECT count(*) AS n FROM vote_records WHERE vote_id = 'cd-40002'").fetchone()["n"] == 4
     # The HTML daily list had all totals, so the XML daily list was not requested.
     assert not any("par1=1" in url for url in pages.asked)
+
+
+def test_fill_subjects_names_the_bill(conn):
+    seed(conn)
+    conn.execute(
+        "UPDATE votes SET description = 'Vot final adoptare', bill_ref = NULL, bill_id = NULL WHERE id = 'cd-40002'"
+    )
+    pages = Pages({"evot2015.nominal": "cdep_vote_nominal.html"})
+    assert cdep_votes.fill_subjects(conn, pages) == 1
+    assert pages.asked == [cdep_votes.nominal_url("40002")]
+    cdep_bills.relink(conn)
+    vote = conn.execute("SELECT subject, bill_ref, bill_id FROM votes WHERE id = 'cd-40002'").fetchone()
+    assert vote == {"subject": "PL-x 501/2025 - Vot final adoptare", "bill_ref": "PL-x 501/2025", "bill_id": "cd-22001"}
+    # Already read: not asked again; collecting the day again keeps the reference found in the subject.
+    assert cdep_votes.fill_subjects(conn, pages) == 0
+    vote = next(v for v in cdep_votes.parse_day(fixture("cdep_vote_day.html"), DAY) if v["idv"] == "40002")
+    cdep_votes.store_vote(conn, {**vote, "description": "Vot final adoptare"}, None)
+    assert conn.execute("SELECT bill_ref FROM votes WHERE id = 'cd-40002'").fetchone()["bill_ref"] == "PL-x 501/2025"

@@ -32,17 +32,24 @@ def ts_query(text: str) -> str | None:
     return " & ".join(dict.fromkeys(terms)) or None
 
 
+# What a vote was about, for lists: the linked bill, else the subject from the vote page (cdep_votes.fill_subjects).
+VOTE_BILL = "b.number AS bill_number, b.title AS bill_title"
+VOTE_BILL_JOIN = "LEFT JOIN bills b ON b.id = v.bill_id"
+
 MEMBER_OVERVIEW = """
-WITH vote_window AS (
+WITH next_legislature AS (
+    -- A mandate of an earlier legislature with no end date ends when the next legislature starts.
+    SELECT chamber, legislature - 4 AS legislature, min(validated_on) AS starts_on
+    FROM members GROUP BY chamber, legislature
+),
+vote_window AS (
     SELECT m.id AS member_id, count(v.id) AS eligible
     FROM members m
+    LEFT JOIN next_legislature nl ON nl.chamber = m.chamber AND nl.legislature = m.legislature
     JOIN votes v ON v.chamber = m.chamber AND v.has_nominal AND NOT v.is_test
          AND v.voted_at::date >= coalesce(m.validated_on, make_date(m.legislature, 12, 1))
          AND (m.mandate_end IS NULL OR v.voted_at::date <= m.mandate_end)
-         -- A mandate of an earlier legislature with no end date ends when the next legislature starts.
-         AND v.voted_at::date < coalesce((SELECT min(n.validated_on) FROM members n
-                                          WHERE n.chamber = m.chamber AND n.legislature = m.legislature + 4),
-                                         'infinity'::date)
+         AND v.voted_at::date < coalesce(nl.starts_on, 'infinity'::date)
     GROUP BY m.id
 ),
 present AS (
@@ -246,11 +253,12 @@ def member_votes(conn: psycopg.Connection, member_id: str, limit: int = 50, offs
                    FROM vote_records WHERE choice IN ('yes', 'no', 'abstain') GROUP BY vote_id, group_code, choice
                ) x WHERE rnk = 1 AND n * 2 > total
            )
-           SELECT v.id, v.voted_at, v.description, v.bill_id, v.bill_ref, r.choice, r.group_code,
+           SELECT v.id, v.voted_at, v.description, v.subject, v.bill_id, v.bill_ref, r.choice, r.group_code,
+                  b.number AS bill_number, b.title AS bill_title,
                   l.choice AS group_choice,
                   (l.choice IS NOT NULL AND r.choice IN ('yes', 'no', 'abstain') AND r.choice <> l.choice
                    AND r.group_code NOT ILIKE 'neafilia%%') AS against_group
-           FROM vote_records r JOIN votes v ON v.id = r.vote_id
+           FROM vote_records r JOIN votes v ON v.id = r.vote_id LEFT JOIN bills b ON b.id = v.bill_id
            LEFT JOIN line l ON l.vote_id = r.vote_id AND l.group_code = r.group_code
            WHERE r.member_id = %s ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST LIMIT %s OFFSET %s""",
         (member_id, limit, offset),
