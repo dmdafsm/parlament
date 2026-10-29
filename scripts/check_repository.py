@@ -24,7 +24,6 @@ REQUIRED_PATHS = (
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/workflows/verify.yml",
     ".github/rulesets/protected-branches.json",
-    "docs/plan.md",
     "docs/surse-date.md",
     "docs/engineering/coding-standards.md",
     "docs/engineering/testing-and-verification.md",

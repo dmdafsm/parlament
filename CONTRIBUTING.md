@@ -6,7 +6,7 @@ Run `python3 scripts/install_hooks.py` once per clone, then work on a `<type>/<t
 
 ## Workflow
 
-1. Pick a task from the [plan](docs/plan.md) or a `REPO` maintenance task.
+1. Pick a feature or data task, or a `REPO` maintenance task.
 2. Do the [readiness pass](docs/engineering/task-readiness.md): the smallest coherent result and the evidence needed to accept it.
 3. Implement following the [coding standards](docs/engineering/coding-standards.md) and the [security/data rules](docs/engineering/security-and-data.md).
 4. Run focused checks (`uv run pytest tests/test_x.py`), then `python3 scripts/verify.py`. See [testing and verification](docs/engineering/testing-and-verification.md).

@@ -7,7 +7,7 @@ A short pass done by whoever implements the task, before editing. Not a separate
 For a feature or data task, establish:
 
 1. What question the result answers for the maintainer (for example "how often does my deputy vote?") and the observable output (a page section, an API field, a command).
-2. The relevant [plan](../plan.md) phase and its open limitations; reduce the task to a coherent, implementable behavior.
+2. The open limitations it touches; reduce the task to a coherent, implementable behavior.
 3. Concrete examples of input and expected output, including failure cases: a member whose mandate ended, an unaffiliated member, a secret vote, a bill without a Senate number, a page that changed shape.
 4. The source's terms, access limits and protections ([security and data](security-and-data.md)).
 5. What evidence will establish the result: fixture tests, a hand-computed example, a reconciliation on real data, a browser check.
