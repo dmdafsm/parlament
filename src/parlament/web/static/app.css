@@ -1,13 +1,14 @@
-/* Theme on top of Beer CSS (Material Design 3): a calm blue primary, readable tables, small charts. */
+/* Theme on top of Beer CSS (Material Design 3): a violet primary (green and red stay for yes/no votes),
+   amber for warnings, readable tables, small charts. */
 body.light {
-  --primary: #1f5ea8; --on-primary: #ffffff; --primary-container: #d5e3ff; --on-primary-container: #001c3b;
-  --secondary: #555f71; --on-secondary: #ffffff; --secondary-container: #d9e3f8; --on-secondary-container: #121c2b;
+  --primary: #6a4fa3; --on-primary: #ffffff; --primary-container: #ebddff; --on-primary-container: #250059;
+  --secondary: #625b71; --on-secondary: #ffffff; --secondary-container: #e8def8; --on-secondary-container: #1e192b;
   --tertiary: #8a5100; --on-tertiary: #ffffff; --tertiary-container: #ffdcbe; --on-tertiary-container: #2c1600;
-  --surface: #f9f9ff; --surface-container: #ededf4; --surface-container-low: #f3f3fa; --surface-container-high: #e7e8ee;
+  --surface: #fef7ff; --surface-container: #f3edf7; --surface-container-low: #f7f2fa; --surface-container-high: #ece6f0;
 }
 body.dark {
-  --primary: #a7c8ff; --on-primary: #003060; --primary-container: #004787; --on-primary-container: #d5e3ff;
-  --secondary: #bdc7dc; --on-secondary: #273141; --secondary-container: #3e4759; --on-secondary-container: #d9e3f8;
+  --primary: #d3bbff; --on-primary: #3b1d71; --primary-container: #523789; --on-primary-container: #ebddff;
+  --secondary: #cdc2db; --on-secondary: #342d40; --secondary-container: #4b4358; --on-secondary-container: #e8def8;
   --tertiary: #ffb870; --on-tertiary: #4a2800; --tertiary-container: #693c00; --on-tertiary-container: #ffdcbe;
 }
 main.responsive { padding-bottom: 6rem; }
@@ -85,3 +86,5 @@ table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }
 
 /* CV entries: the first line (job, school) stands out from the details under it. */
 .cv-text::first-line { font-weight: 600; }
+/* A select shows its choice on one line ("Ambele camere" wrapped in narrow filter columns). */
+.field > select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
