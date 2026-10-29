@@ -117,6 +117,13 @@ def ingest_memoranda(
         typer.echo(f"Expuneri de motive: {bill_texts.ingest(conn, fetcher, limit, site)}")
 
 
+@ingest_app.command("ocr")
+def ingest_ocr(limit: int = typer.Option(None)) -> None:
+    """OCR (Tesseract, romana) pe expunerile de motive scanate; foloseste PDF-urile salvate in data/raw."""
+    with collecting(from_raw=True) as (conn, fetcher):
+        typer.echo(f"Expuneri citite cu OCR: {bill_texts.ocr(conn, fetcher, limit)}")
+
+
 @ingest_app.command("bills")
 def ingest_bills(
     idp: list[str] = typer.Option(None, help="Id-uri cdep.ro (idp) de descarcat"),

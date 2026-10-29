@@ -27,9 +27,9 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 
 ## Next
 
-1. Memoranda of Chamber-only bills (`ingest memoranda --site cdep`) and their summaries.
+Nothing queued; see the ideas below.
 
-Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators, full-text search in Chamber stenograms, XML vote export (missing 'not voted' counts, nominal lists), Senate questions, interpellations, speeches and motions, Senate stenogram text (PDF per sitting) in the same search, plain-language bill summaries from a local model ([ADR 0006](engineering/decisions/0006-local-llm-summaries.md)), earlier mandates of current MPs (2016 and 2020 legislatures).
+Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators, full-text search in Chamber stenograms, XML vote export (missing 'not voted' counts, nominal lists), Senate questions, interpellations, speeches and motions, Senate stenogram text (PDF per sitting) in the same search, plain-language bill summaries from a local model, Chamber-only memoranda read with OCR ([ADR 0006](engineering/decisions/0006-local-llm-summaries.md)), earlier mandates of current MPs (2016 and 2020 legislatures).
 
 ## More ideas
 
