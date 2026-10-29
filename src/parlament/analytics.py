@@ -149,14 +149,15 @@ def members(
     query: str | None = None,
     group: str | None = None,
     constituency: int | None = None,
-    in_office: bool = True,
+    in_office: bool | None = True,
 ) -> list[dict]:
+    """`in_office`: True for members in office, False for those whose mandate ended, None for both."""
     where, params = ["legislature = %(leg)s"], {"leg": legislature}
     if chamber in ("cd", "senat"):
         where.append("chamber = %(chamber)s")
         params["chamber"] = chamber
-    if in_office:
-        where.append("in_office")
+    if in_office is not None:
+        where.append("in_office" if in_office else "NOT in_office")
     if query:
         where.append("f_unaccent(name) ILIKE f_unaccent(%(q)s)")
         params["q"] = f"%{query}%"

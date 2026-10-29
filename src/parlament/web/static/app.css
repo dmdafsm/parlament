@@ -71,3 +71,10 @@ mark { background: var(--tertiary-container); color: inherit; padding: 0 0.15rem
 
 /* A long name wraps inside its table cell instead of running over the next columns. */
 table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }
+
+/* Grouped members list: each group can be folded. */
+.member-section > summary { cursor: pointer; list-style: none; margin-top: 1.5rem; }
+.member-section > summary::-webkit-details-marker { display: none; }
+.member-section > summary h6 { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; }
+.member-section > summary h6 > i { transition: transform 0.15s; }
+.member-section[open] > summary h6 > i { transform: rotate(90deg); }

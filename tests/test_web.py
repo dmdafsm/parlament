@@ -74,6 +74,22 @@ def test_page_content(client):
     assert "PL-x 501/2025" in client.get("/lege/cd-22001").text
 
 
+def test_ended_mandates_filter_and_collapsible_groups(client, database_url):
+    with db.connect(database_url) as conn:
+        conn.execute("UPDATE members SET in_office = false WHERE id = 'cd-2024-1'")
+        conn.commit()
+    # 'Mandat încetat' lists only the members whose mandate ended; by default they are left out.
+    ended = client.get("/parlamentari?fosti=true").text
+    assert "Ana-Maria ALBESCU" in ended and "mandat încetat" in ended and "/parlamentar/cd-2024-3" not in ended
+    current = client.get("/parlamentari").text
+    assert "Ana-Maria ALBESCU" not in current and "/parlamentar/cd-2024-3" in current
+    # The API keeps its meaning: fosti=true adds them to the members in office.
+    ids = {m["id"] for m in client.get("/api/v1/parlamentari?fosti=true").json()}
+    assert {"cd-2024-1", "cd-2024-3"} <= ids
+    # Each group of a grouped list can be folded.
+    assert '<details class="member-section" open>' in client.get("/parlamentari?grupare=grup").text
+
+
 def test_htmx_returns_partial(client):
     response = client.get("/parlamentari?sort=luari", headers={"HX-Request": "true"})
     assert response.status_code == 200

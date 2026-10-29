@@ -3,7 +3,7 @@
 {% if medians %}Mediane: {% for ch, med in medians.items() %}{{ ch|chamber }} – prezență {{ med.attendance|pct }}, {{ med.speeches|round|int if med.speeches is not none else "–" }} luări de cuvânt{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
 <a class="link" href="/metodologie#indicatori">Cum calculăm?</a></p>
 {% for label, rows in sections %}
-{% if label %}<h6 class="section-label">{{ label }} <span class="badge none">{{ rows|length }}</span></h6>{% endif %}
+{% if label %}<details class="member-section" open><summary><h6><i>chevron_right</i>{{ label }} <span class="badge none">{{ rows|length }}</span></h6></summary>{% endif %}
 <div class="table-wrap">
 <table class="data">
   <thead><tr><th>Parlamentar</th><th class="hide-s">Grup</th><th class="hide-s">Circumscripție</th><th>Prezență la vot</th><th class="num">Luări de cuvânt</th><th class="num hide-s">Inițiative</th><th class="num hide-s">Întrebări</th><th class="hide-s">Vot cu grupul</th></tr></thead>
@@ -23,4 +23,5 @@
   </tbody>
 </table>
 </div>
+{% if label %}</details>{% endif %}
 {% else %}<p>Niciun rezultat.</p>{% endfor %}

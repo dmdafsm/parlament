@@ -132,6 +132,7 @@ def members_page(
 ):
     county = int(judet) if judet else None  # forms send an empty value for "all"
     leg = CONF.legislature
+    # 'Mandat încetat' lists only the members whose mandate ended during the legislature.
     rows = analytics.members(conn, leg, camera or None, sort, q or None, grup or None, county, in_office=not fosti)
     sections: list[tuple[str, list[dict]]] = []
     if grupare:
@@ -505,7 +506,7 @@ def api_members(
     conn: Connection = Depends(get_conn),
 ):
     """Toți parlamentarii legislaturii curente, cu indicatorii de activitate."""
-    return analytics.members(conn, CONF.legislature, camera or None, sort, in_office=not fosti)
+    return analytics.members(conn, CONF.legislature, camera or None, sort, in_office=None if fosti else True)
 
 
 @app.get("/api/v1/parlamentari/{member_id}", tags=["API"])
