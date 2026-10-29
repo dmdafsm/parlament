@@ -86,3 +86,5 @@ table.data td a.row > span { flex: 1 1 auto; min-inline-size: 0; }
 
 /* CV entries: the first line (job, school) stands out from the details under it. */
 .cv-text::first-line { font-weight: 600; }
+/* A select shows its choice on one line ("Ambele camere" wrapped in narrow filter columns). */
+.field > select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
