@@ -67,6 +67,10 @@ def test_page_content(client):
     vote = client.get("/vot/cd-40002").text
     # Deputy 6 was validated after the vote and must not be listed as absent.
     assert "Nu figurează ca prezenți" not in vote or "Florea Ion" not in vote
+    # The nominal list is grouped by parliamentary group.
+    assert '<p class="bold no-margin top-margin">PSD' in vote
+    # The votes list says what was voted: the linked bill's number and title.
+    assert "PL-x 501/2025 –" in client.get("/voturi").text
     assert "PL-x 501/2025" in client.get("/lege/cd-22001").text
 
 

@@ -36,6 +36,7 @@ log = logging.getLogger("parlament.scheduler")
 def daily(conn, fetcher) -> None:
     today = dt.date.today()
     cdep_votes.ingest_days(conn, fetcher, cdep_votes.sitting_days(today - dt.timedelta(days=3), today))
+    cdep_votes.fill_subjects(conn, fetcher)
     _, idps = cdep_agenda.ingest(conn, fetcher, [None])
     pending = [
         row["source_id"]

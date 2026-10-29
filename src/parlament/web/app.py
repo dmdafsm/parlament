@@ -96,7 +96,10 @@ def home(request: Request, conn: Connection = Depends(get_conn)):
         request,
         "home.html",
         counts=counts,
-        votes=conn.execute("SELECT * FROM votes WHERE NOT is_test ORDER BY voted_at DESC LIMIT 6").fetchall(),
+        votes=conn.execute(
+            f"SELECT v.*, {analytics.VOTE_BILL} FROM votes v {analytics.VOTE_BILL_JOIN}"
+            " WHERE NOT v.is_test ORDER BY v.voted_at DESC LIMIT 6"
+        ).fetchall(),
         bills=analytics.bills(conn, limit=6),
         agenda=conn.execute("SELECT * FROM agendas ORDER BY first_day DESC NULLS LAST, id DESC LIMIT 1").fetchone(),
         constituencies=constituencies(conn),
@@ -322,11 +325,11 @@ def votes_page(
     conn: Connection = Depends(get_conn),
 ):
     params = {"limit": 50, "offset": (pagina - 1) * 50, "q": analytics.ts_query(q) or "''", "chamber": camera}
-    where = "NOT is_test" + (" AND search @@ to_tsquery('simple', %(q)s)" if q else "")
-    where += " AND chamber = %(chamber)s" if camera else ""
+    where = "NOT v.is_test" + (" AND v.search @@ to_tsquery('simple', %(q)s)" if q else "")
+    where += " AND v.chamber = %(chamber)s" if camera else ""
     rows = conn.execute(
-        f"""SELECT * FROM votes WHERE {where}
-            ORDER BY voted_at DESC, seq DESC NULLS LAST LIMIT %(limit)s OFFSET %(offset)s""",
+        f"""SELECT v.*, {analytics.VOTE_BILL} FROM votes v {analytics.VOTE_BILL_JOIN} WHERE {where}
+            ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST LIMIT %(limit)s OFFSET %(offset)s""",
         params,
     ).fetchall()
     return render(
@@ -340,9 +343,11 @@ def vote_page(request: Request, vote_id: str, conn: Connection = Depends(get_con
     if vote is None:
         raise HTTPException(404, "Vot negăsit")
     records = conn.execute(
-        """SELECT r.*, coalesce(m.name, r.member_name) AS name, m.id AS profile
+        # The source writes 'PNL (afiliat)' and 'PNL(afiliat)' in the same vote; one spelling per group here.
+        r"""SELECT r.*, regexp_replace(r.group_code, '\s*\(', ' (') AS group_label,
+                  coalesce(m.name, r.member_name) AS name, m.id AS profile
            FROM vote_records r LEFT JOIN members m ON m.id = r.member_id
-           WHERE r.vote_id = %s ORDER BY r.group_code, r.member_name""",
+           WHERE r.vote_id = %s ORDER BY group_label, r.member_name""",
         (vote_id,),
     ).fetchall()
     absent = (

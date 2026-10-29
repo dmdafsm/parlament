@@ -7,6 +7,9 @@ cdep.ro also publishes an XML export (evot2015.xml). Its daily list always has t
 HTML list sometimes omits, so the XML fills that gap; the HTML description is kept because it carries the vote
 type ('Vot final - ...'). The XML nominal list has names but no profile ids: it is used when every name maps to
 exactly one deputy of the legislature, otherwise the HTML nominal page (with profile links) is read instead.
+
+Neither list names the bill of a vote such as 'Vot final respingere'; the HTML nominal page does ('Subiect vot'),
+so `fill_subjects` reads it for votes with no bill reference.
 """
 
 import datetime as dt
@@ -144,13 +147,40 @@ def nominal_subject(page: str) -> str | None:
     return None
 
 
+def fill_subjects(conn: psycopg.Connection, fetcher: Fetcher, limit: int | None = None) -> int:
+    """Subject and bill reference, from the nominal page, of Chamber votes whose description names no bill."""
+    rows = conn.execute(
+        """SELECT id, source_id FROM votes
+           WHERE chamber = 'cd' AND NOT is_test AND bill_ref IS NULL AND subject IS NULL
+           ORDER BY voted_at DESC"""
+    ).fetchall()
+    log = db.log_start(conn, SOURCE, f"vote subjects ({len(rows)})")
+    count, errors = 0, []
+    for row in rows[:limit] if limit else rows:
+        try:
+            subject = nominal_subject(fetcher.get("cdep", nominal_url(row["source_id"]))) or ""
+        except FetchError as error:
+            errors.append(str(error))
+            continue
+        with conn.transaction():
+            conn.execute(
+                "UPDATE votes SET subject = %s, bill_ref = %s WHERE id = %s",
+                (subject, find_bill_ref(subject), row["id"]),
+            )
+        count += 1
+    db.log_end(conn, log, "ok" if not errors else "partial", count, "\n".join(errors[:20]) or None)
+    return count
+
+
 def store_vote(conn: psycopg.Connection, vote: dict, records: list[dict] | None) -> None:
     vid = f"cd-{vote['idv']}"
     conn.execute(
         """INSERT INTO votes (id, chamber, source_id, voted_at, description, bill_ref, present, yes, no, abstain,
                not_voted, is_test, has_nominal, url)
            VALUES (%s, 'cd', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-           ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description, bill_ref = EXCLUDED.bill_ref,
+           ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description,
+               -- a reference found in the subject (fill_subjects) survives a description that has none
+               bill_ref = coalesce(EXCLUDED.bill_ref, votes.bill_ref),
                present = EXCLUDED.present, yes = EXCLUDED.yes, no = EXCLUDED.no, abstain = EXCLUDED.abstain,
                not_voted = EXCLUDED.not_voted, is_test = EXCLUDED.is_test,
                has_nominal = votes.has_nominal OR EXCLUDED.has_nominal""",

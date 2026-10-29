@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import split, stage_chip %}
+{% from "macros.html" import split, stage_chip, vote_subject %}
 {% block content %}
 <h4 class="page-title">Ce face Parlamentul României</h4>
 <p class="muted">Cine sunt cei {{ counts.deputies }} deputați și {{ counts.senators }} senatori, ce legi propun, cum votează și cât de des sunt prezenți.
@@ -44,7 +44,7 @@
     <h6 class="section-label">Ultimele voturi <a class="small-text link" href="/voturi">toate</a></h6>
     {% for v in votes %}
     <a class="row padding surface-container-low round small-margin" href="/vot/{{ v.id }}">
-      <div class="max"><div class="small-text muted">{{ v.voted_at|date_ro(true) }}</div><div>{{ v.description }}</div>{{ split(v) }}</div>
+      <div class="max"><div class="small-text muted">{{ v.voted_at|date_ro(true) }}</div><div>{{ v.description }}</div>{{ vote_subject(v) }}{{ split(v) }}</div>
     </a>
     {% else %}<p class="muted">Încă nu sunt voturi colectate.</p>{% endfor %}
   </div>
