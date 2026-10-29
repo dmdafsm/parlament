@@ -64,6 +64,8 @@ def test_pages(client, path):
 def test_page_content(client):
     member = client.get("/parlamentar/cd-2024-1").text
     assert "Ana-Maria ALBESCU" in member and "Vicelider" in member and "Profil oficial" in member
+    # Initiatives, speeches and questions are folded; the CV keeps one line per role.
+    assert member.count('<details class="fold">') >= 3
     vote = client.get("/vot/cd-40002").text
     # Deputy 6 was validated after the vote and must not be listed as absent.
     assert "Nu figurează ca prezenți" not in vote or "Florea Ion" not in vote
@@ -87,7 +89,7 @@ def test_ended_mandates_filter_and_collapsible_groups(client, database_url):
     ids = {m["id"] for m in client.get("/api/v1/parlamentari?fosti=true").json()}
     assert {"cd-2024-1", "cd-2024-3"} <= ids
     # Each group of a grouped list can be folded.
-    assert '<details class="member-section" open>' in client.get("/parlamentari?grupare=grup").text
+    assert '<details class="fold" open>' in client.get("/parlamentari?grupare=grup").text
 
 
 def test_htmx_returns_partial(client):
@@ -166,7 +168,8 @@ def test_earlier_mandates(client, database_url):
     assert "cd-2020-77" not in client.get("/cauta?q=Cernat").text
     # The current profile links the earlier mandate to its official page.
     current = client.get("/parlamentar/cd-2024-3").text
-    assert 'href="https://e.invalid"' in current and "deputat 2020–2024" in current
+    # Shown as text: the earlier mandate has no page here and the official profile is not needed.
+    assert 'href="https://e.invalid"' not in current and "deputat 2020–2024" in current
     # The votes of the current legislature are not counted as absences in the earlier mandate.
     with db.connect(database_url) as conn:
         assert analytics.members(conn, 2020)[0]["attendance"] is None

@@ -216,7 +216,7 @@ def member_page(request: Request, member_id: str, conn: Connection = Depends(get
                WHERE cm.member_id = %s ORDER BY c.name""",
             (member_id,),
         ).fetchall(),
-        votes=analytics.member_votes(conn, member_id, limit=30),
+        votes=analytics.member_votes(conn, member_id, limit=10),
         initiatives=initiatives,
         questions=conn.execute(
             "SELECT * FROM questions WHERE member_id = %s ORDER BY asked_on DESC NULLS LAST LIMIT 50", (member_id,)

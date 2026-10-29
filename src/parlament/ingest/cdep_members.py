@@ -12,6 +12,7 @@ from parlament.config import CURRENT_LEGISLATURE
 from parlament.fetch import Fetcher, FetchError
 from parlament.parsing import (
     ParseError,
+    block_text,
     clean,
     fold,
     html,
@@ -383,15 +384,20 @@ def parse_cv(page: str) -> list[dict]:
         tables = tree.css(CV_TABLES)
         pairs = tree.css("div.cv-eu-pass-container2025")
         if tables:
-            rows = [[node_text(c) for c in tr.iter() if c.tag == "td"] for t in tables for tr in t.css("tr")]
+            rows = [_cells([c for c in tr.iter() if c.tag == "td"]) for t in tables for tr in t.css("tr")]
             entries = _cv_rows(rows)
         elif pairs:
-            entries = _cv_rows([[node_text(c) for c in pair.iter() if c.tag == "div"] for pair in pairs])
+            entries = _cv_rows([_cells([c for c in pair.iter() if c.tag == "div"]) for pair in pairs])
         else:
             entries = _cv_paragraphs(tree)
         if entries:
             sections.append({"section": title, "entries": entries})
     return sections
+
+
+def _cells(cells: list) -> list[str]:
+    """Label on one line; values keep their lines (job title, period, one line per role)."""
+    return [node_text(cells[0]), *(block_text(cell) for cell in cells[1:])] if cells else []
 
 
 def _cv_rows(rows: list[list[str]]) -> list[dict]:

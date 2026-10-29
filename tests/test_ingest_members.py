@@ -150,7 +150,8 @@ def test_deputy_cv_europass_tables():
     assert jobs[0] == {"label": "2024 - ÎN CURS - București", "text": "Deputat\nCamera Deputaților"}
     # A new 'Perioada' row starts a new entry even without the blank separator row.
     assert [(e["label"], e["text"]) for e in jobs[1:]] == [
-        ("2015 - 2024 - Exemplu", "Profesor"),
+        # One line per <br> or heading; the source's own line breaks inside a sentence are not kept.
+        ("2015 - 2024 - Exemplu", "Profesor\n2015 - 2020\nDiriginte al clasei a IX-a"),
         ("2010 - 2015", "Inginer"),
     ]
     languages = cv[1]["entries"]

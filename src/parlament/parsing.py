@@ -33,6 +33,19 @@ def node_text(node: Node | None) -> str:
     return clean(node.text(separator=" ")) if node is not None else ""
 
 
+BLOCK_BREAK = re.compile(r"<br\s*/?>|</?(?:p|li|ul|ol|div|h[1-6]|tr)\b[^>]*>", re.I)
+
+
+def block_text(node: Node | None) -> str:
+    """Text of a node with one line per <br>, paragraph, list item or heading (the source's own line breaks
+    inside a paragraph are not kept); empty lines dropped."""
+    if node is None:
+        return ""
+    marked = BLOCK_BREAK.sub("\n", re.sub(r"\s*\n\s*", " ", node.html or ""))
+    lines = (clean(line) for line in html(f"<div>{marked}</div>").css_first("div").text().split("\n"))
+    return "\n".join(line for line in lines if line)
+
+
 def html(text: str) -> HTMLParser:
     return HTMLParser(text)
 
