@@ -96,9 +96,9 @@ def test_ordinances_and_stages(conn):
 
 def test_search(conn):
     seed(conn)
-    results = analytics.search(conn, "Albescu")
+    results = analytics.search(conn, "Albescu", 2024)
     assert results["members"][0]["id"] == "cd-2024-1"
-    assert analytics.search(conn, "PL-x 501/2025")["bills"][0]["id"] == "cd-22001"
+    assert analytics.search(conn, "PL-x 501/2025", 2024)["bills"][0]["id"] == "cd-22001"
 
 
 def test_exports_and_feeds(conn, tmp_path):

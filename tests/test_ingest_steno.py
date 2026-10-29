@@ -22,9 +22,9 @@ def test_stenogram_turns():
 
 def test_stenogram_search(conn):
     seed(conn)  # stores the stenogram fixture
-    texts = analytics.search(conn, "invatamantul")["texts"]
+    texts = analytics.search(conn, "invatamantul", 2024)["texts"]
     assert [(t["speaker"], t["member_id"]) for t in texts] == [("Domnul Ion Exemplu (ministru)", None)]
     # The search ignores diacritics; the snippet keeps them and marks the matching word.
     assert ("învățământul", True) in texts[0]["snippet"]
-    texts = analytics.search(conn, "ordonanta adoptata")["texts"]
+    texts = analytics.search(conn, "ordonanta adoptata", 2024)["texts"]
     assert texts[0]["member_id"] == "cd-2024-1"

@@ -23,13 +23,13 @@ Public, open-source portal that makes the activity of Romanian MPs (Senate and C
 - **P3 — Votes and attendance** (done): daily and nominal votes of both chambers, attendance within the mandate, party-line voting, votes against the group, absent list per vote.
 - **P4 — Speeches and questions** (done): speeches index per deputy, questions and interpellations, motions; search without diacritics across members, bills, votes and speeches.
 - **P5 — Learning, methodology, open data** (done): learning pages, methodology with indicator definitions and last runs, CSV exports, JSON API with OpenAPI docs, RSS feeds.
-- **P6 — Extras** (partly done): party-switching page with group flows, ordinances tracker (OUG/OG approval bills, time to law), Constitutional Court mentions, tacit adoptions, RSS alerts per MP/bill. Previous legislatures: senators of 2016 and 2020 (profile, group, counters for that mandate), with links between the mandates of the same person; deputies of 2016 and 2020 not yet collected (cdep.ro unreachable). Dropped: email alerts (RSS covers following an MP or a bill); asset and interest declarations (not of interest; ANI search and downloads are behind reCAPTCHA and, after CCR decision 297/2025, declarations are no longer published online).
+- **P6 — Extras** (partly done): party-switching page with group flows, ordinances tracker (OUG/OG approval bills, time to law), Constitutional Court mentions, tacit adoptions, RSS alerts per MP/bill. Earlier mandates: MPs of the 2016 and 2020 legislatures are collected only to show a current MP's earlier mandates (chamber, years, party, link to the official profile); they are not listed or searched. Dropped: email alerts (RSS covers following an MP or a bill); asset and interest declarations (not of interest; ANI search and downloads are behind reCAPTCHA and, after CCR decision 297/2025, declarations are no longer published online).
 
 ## Next
 
-1. Deputies of 2016 and 2020 (`parlament ingest members --chamber cd --legislature 2020`, then 2016) and their photos, once cdep.ro answers again; memoranda of Chamber-only bills (`ingest memoranda --site cdep`) and their summaries.
+1. Memoranda of Chamber-only bills (`ingest memoranda --site cdep`) and their summaries.
 
-Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators, full-text search in Chamber stenograms, XML vote export (missing 'not voted' counts, nominal lists), Senate questions, interpellations, speeches and motions, Senate stenogram text (PDF per sitting) in the same search, plain-language bill summaries from a local model ([ADR 0006](engineering/decisions/0006-local-llm-summaries.md)), senators of the 2016 and 2020 legislatures.
+Done since the first release: votes for the whole legislature (both chambers), Senate nominal votes, Senate bills and agenda, CVs of deputies and senators, full-text search in Chamber stenograms, XML vote export (missing 'not voted' counts, nominal lists), Senate questions, interpellations, speeches and motions, Senate stenogram text (PDF per sitting) in the same search, plain-language bill summaries from a local model ([ADR 0006](engineering/decisions/0006-local-llm-summaries.md)), earlier mandates of current MPs (2016 and 2020 legislatures).
 
 ## More ideas
 
