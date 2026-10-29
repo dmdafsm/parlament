@@ -79,6 +79,7 @@ def test_page_content(client):
 def test_ended_mandates_filter_and_collapsible_groups(client, database_url):
     with db.connect(database_url) as conn:
         conn.execute("UPDATE members SET in_office = false WHERE id = 'cd-2024-1'")
+        analytics.refresh(conn)
         conn.commit()
     # 'Mandat încetat' lists only the members whose mandate ended; by default they are left out.
     ended = client.get("/parlamentari?fosti=true").text
@@ -162,6 +163,7 @@ def test_earlier_mandates(client, database_url):
         cdep_members.store_deputy(
             conn, 2020, ListedDeputy("77", "Cernat Vlad", 1, "Alba", "9", "Grupul vechi"), profile, "https://e.invalid"
         )
+        analytics.refresh(conn)
     # Earlier legislatures are collected only for "other mandates": not listed and not searched.
     page = client.get("/parlamentari").text
     assert "/parlamentar/cd-2024-3" in page and "cd-2020-77" not in page

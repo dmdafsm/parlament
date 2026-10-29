@@ -11,7 +11,7 @@ import logging
 import time
 import traceback
 
-from parlament import db, exports
+from parlament import analytics, db, exports
 from parlament.config import settings
 from parlament.fetch import BlockedError, Fetcher
 from parlament.ingest import (
@@ -65,6 +65,7 @@ def weekly(conn, fetcher) -> None:
     cdep_steno.ingest(conn, fetcher)
     senat_steno.ingest(conn, fetcher, leg)
     bill_texts.ingest(conn, fetcher)
+    analytics.refresh(conn)  # the exports read the indicators
     exports.write_all(conn)
 
 
@@ -81,6 +82,7 @@ def run(once: bool = False) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     with db.connect() as conn:
         db.migrate(conn)
+        analytics.ensure_overview(conn)
     last: dict[str, dt.date] = {}
     while True:
         now = dt.datetime.now()
@@ -97,6 +99,11 @@ def run(once: bool = False) -> None:
                     db.close_running(conn, "blocked", str(error))
             except Exception:  # keep the loop alive; the failure is logged and in ingest_log
                 log.error("job %s failed:\n%s", job, traceback.format_exc())
+            try:  # pages show the indicators of whatever was stored, also after a stopped job
+                with db.connect() as conn:
+                    analytics.refresh(conn)
+            except Exception:
+                log.error("indicators not refreshed:\n%s", traceback.format_exc())
             last[job] = now.date()
         if once:
             return

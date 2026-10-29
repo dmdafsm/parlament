@@ -30,6 +30,7 @@ def test_senator_attendance_uses_nominal_votes_else_session_counts(conn):
     assert (senator["attendance_present"], senator["attendance_base"], senator["attendance_unit"]) == (1, 1, "vote")
     # Without any collected Senate vote, the counts senat.ro prints on the profile are used.
     conn.execute("DELETE FROM votes WHERE chamber = 'senat'")
+    analytics.refresh(conn)
     senator = analytics.members(conn, 2024, "senat")[0]
     assert (senator["attendance_present"], senator["attendance_base"]) == (77, 100)
     assert float(senator["attendance"]) == 0.77 and senator["attendance_unit"] == "session"
@@ -111,3 +112,16 @@ def test_exports_and_feeds(conn, tmp_path):
     xml = feeds.member_feed(conn, "https://example.invalid/", "cd-2024-1")
     assert "<rss" in xml and "Vot: Pentru" in xml and "Inițiativă: PL-x 501/2025" in xml
     assert feeds.member_feed(conn, "https://example.invalid/", "nope") is None
+
+
+def test_overview_is_stored_and_recreated(conn):
+    seed(conn)
+    # A database migrated before the stored overview existed gets it on first use.
+    conn.execute("DROP MATERIALIZED VIEW member_overview")
+    analytics.ensure_overview(conn)
+    assert len(analytics.members(conn, 2024, "cd")) > 0
+    # Pages show what was stored at the last refresh; a refresh picks up newly collected data.
+    conn.execute("UPDATE members SET name = 'Nume Nou' WHERE id = 'cd-2024-1'")
+    assert analytics.member(conn, "cd-2024-1")["name"] != "Nume Nou"
+    analytics.refresh(conn)
+    assert analytics.member(conn, "cd-2024-1")["name"] == "Nume Nou"

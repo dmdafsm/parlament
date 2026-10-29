@@ -141,6 +141,22 @@ SORTS = {
 }
 
 
+def refresh(conn: psycopg.Connection) -> None:
+    """Recompute `member_overview` (MEMBER_OVERVIEW over all members). The indicators read every nominal vote,
+    about a second of work, and change only when data is collected: collectors call this when they finish, and
+    pages read the stored result. The view is recreated so its definition always matches the query above."""
+    with conn.transaction():
+        conn.execute("DROP MATERIALIZED VIEW IF EXISTS member_overview")
+        conn.execute(f"CREATE MATERIALIZED VIEW member_overview AS {MEMBER_OVERVIEW.replace('%%', '%')}")
+        conn.execute("CREATE UNIQUE INDEX ON member_overview (id)")
+
+
+def ensure_overview(conn: psycopg.Connection) -> None:
+    """Create `member_overview` if it does not exist yet (a database migrated before it was introduced)."""
+    if conn.execute("SELECT to_regclass('member_overview') IS NULL AS missing").fetchone()["missing"]:
+        refresh(conn)
+
+
 def members(
     conn: psycopg.Connection,
     legislature: int,
@@ -168,7 +184,7 @@ def members(
         where.append("constituency_no = %(cir)s")
         params["cir"] = constituency
     order = SORTS.get(sort, SORTS["nume"])
-    sql = f"SELECT * FROM ({MEMBER_OVERVIEW}) o WHERE {' AND '.join(where)} ORDER BY {order}"
+    sql = f"SELECT * FROM member_overview o WHERE {' AND '.join(where)} ORDER BY {order}"
     return conn.execute(sql, params).fetchall()
 
 
@@ -186,18 +202,18 @@ def mandates(conn: psycopg.Connection, member_id: str) -> list[dict]:
 
 
 def member(conn: psycopg.Connection, member_id: str) -> dict | None:
-    return conn.execute(f"SELECT * FROM ({MEMBER_OVERVIEW}) o WHERE id = %s", (member_id,)).fetchone()
+    return conn.execute("SELECT * FROM member_overview o WHERE id = %s", (member_id,)).fetchone()
 
 
 def chamber_medians(conn: psycopg.Connection, legislature: int) -> dict[str, dict]:
     rows = conn.execute(
-        f"""SELECT chamber,
+        """SELECT chamber,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY attendance) AS attendance,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY loyalty) AS loyalty,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY speeches) AS speeches,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY bills) AS bills,
                    count(*) AS members
-            FROM ({MEMBER_OVERVIEW}) o WHERE legislature = %s AND in_office GROUP BY chamber""",
+            FROM member_overview o WHERE legislature = %s AND in_office GROUP BY chamber""",
         (legislature,),
     ).fetchall()
     return {row["chamber"]: row for row in rows}
@@ -205,10 +221,10 @@ def chamber_medians(conn: psycopg.Connection, legislature: int) -> dict[str, dic
 
 def group_summary(conn: psycopg.Connection, legislature: int) -> list[dict]:
     return conn.execute(
-        f"""SELECT chamber, coalesce(group_short, 'Fără grup') AS group_short, count(*) AS members,
+        """SELECT chamber, coalesce(group_short, 'Fără grup') AS group_short, count(*) AS members,
                    round(avg(attendance), 4) AS attendance, round(avg(loyalty), 4) AS loyalty,
                    sum(bills) AS bills, sum(speeches) AS speeches, sum(questions) AS questions
-            FROM ({MEMBER_OVERVIEW}) o WHERE legislature = %s AND in_office
+            FROM member_overview o WHERE legislature = %s AND in_office
             GROUP BY chamber, group_short ORDER BY chamber, count(*) DESC""",
         (legislature,),
     ).fetchall()
@@ -237,7 +253,7 @@ def group_flows(conn: psycopg.Connection, legislature: int) -> list[dict]:
 
 def switchers(conn: psycopg.Connection, legislature: int) -> list[dict]:
     return conn.execute(
-        f"""SELECT * FROM ({MEMBER_OVERVIEW}) o
+        """SELECT * FROM member_overview o
             WHERE legislature = %s AND (group_changes > 0 OR party_changes > 0)
             ORDER BY group_changes + party_changes DESC, sort_name""",
         (legislature,),
@@ -246,12 +262,18 @@ def switchers(conn: psycopg.Connection, legislature: int) -> list[dict]:
 
 def member_votes(conn: psycopg.Connection, member_id: str, limit: int = 50, offset: int = 0) -> list[dict]:
     return conn.execute(
-        """WITH line AS (
+        """WITH page AS (
+               SELECT r.vote_id, r.choice, r.group_code FROM vote_records r JOIN votes v ON v.id = r.vote_id
+               WHERE r.member_id = %s ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST LIMIT %s OFFSET %s
+           ),
+           line AS (
                SELECT vote_id, group_code, choice FROM (
                    SELECT vote_id, group_code, choice, count(*) AS n,
                           sum(count(*)) OVER (PARTITION BY vote_id, group_code) AS total,
                           rank() OVER (PARTITION BY vote_id, group_code ORDER BY count(*) DESC) AS rnk
-                   FROM vote_records WHERE choice IN ('yes', 'no', 'abstain') GROUP BY vote_id, group_code, choice
+                   FROM vote_records
+                   WHERE choice IN ('yes', 'no', 'abstain') AND vote_id IN (SELECT vote_id FROM page)
+                   GROUP BY vote_id, group_code, choice
                ) x WHERE rnk = 1 AND n * 2 > total
            )
            SELECT v.id, v.voted_at, v.description, v.subject, v.bill_id, v.bill_ref, r.choice, r.group_code,
@@ -259,9 +281,9 @@ def member_votes(conn: psycopg.Connection, member_id: str, limit: int = 50, offs
                   l.choice AS group_choice,
                   (l.choice IS NOT NULL AND r.choice IN ('yes', 'no', 'abstain') AND r.choice <> l.choice
                    AND r.group_code NOT ILIKE 'neafilia%%') AS against_group
-           FROM vote_records r JOIN votes v ON v.id = r.vote_id LEFT JOIN bills b ON b.id = v.bill_id
+           FROM page r JOIN votes v ON v.id = r.vote_id LEFT JOIN bills b ON b.id = v.bill_id
            LEFT JOIN line l ON l.vote_id = r.vote_id AND l.group_code = r.group_code
-           WHERE r.member_id = %s ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST LIMIT %s OFFSET %s""",
+           ORDER BY v.voted_at DESC, v.seq DESC NULLS LAST""",
         (member_id, limit, offset),
     ).fetchall()
 

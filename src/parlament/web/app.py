@@ -40,6 +40,8 @@ def pool() -> ConnectionPool:
     global _pool
     if _pool is None:
         _pool = ConnectionPool(CONF.database_url, min_size=1, max_size=10, kwargs={"row_factory": dict_row}, open=True)
+        with _pool.connection() as conn:
+            analytics.ensure_overview(conn)
     return _pool
 
 

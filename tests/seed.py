@@ -2,6 +2,7 @@
 
 import datetime as dt
 
+from parlament import analytics
 from parlament.ingest import (
     cdep_agenda,
     cdep_bills,
@@ -61,6 +62,7 @@ def seed(conn) -> None:
         cdep_bills.store_bill(conn, "22001", cdep_bills.parse_bill(fixture("cdep_bill.html")))
         cdep_steno.store(conn, STENOGRAM, cdep_steno.parse_stenogram(fixture("cdep_stenogram.html")), {"cd-2024-1"})
     seed_senate(conn)
+    analytics.refresh(conn)
     conn.commit()
 
 
