@@ -21,7 +21,7 @@ def agenda_url(day: dt.date) -> str:
 
 
 def parse_agenda(page: str, day: dt.date) -> dict | None:
-    """The day's agenda, or None when the Senate published none for that day."""
+    """The day's agenda, or None when the Senate published no items for that day."""
     tree = html(page)
     heading = next((node_text(n) for n in tree.css("h1, h2, h3, h4") if "Ordinea de zi" in node_text(n)), None)
     items = []
@@ -46,7 +46,7 @@ def parse_agenda(page: str, day: dt.date) -> dict | None:
                     "text": f"{text} — {outcome}" if outcome else text,
                 }
             )
-    if heading is None and not items:
+    if not items:  # no sitting that day, or the agenda is not published yet: the page has only the heading
         return None
     if heading is None:
         raise ParseError("senat agenda: items without a heading")
@@ -86,6 +86,11 @@ def ingest(conn: psycopg.Connection, fetcher: Fetcher, days: list[dt.date]) -> t
             errors.append(str(error))
             continue
         if agenda is None:
+            # Earlier runs stored such days as empty agendas; a day that lost its items is not shown either.
+            with conn.transaction():
+                aid = f"senat-{day:%Y-%m-%d}"
+                conn.execute("DELETE FROM agenda_items WHERE agenda_id = %s", (aid,))
+                conn.execute("DELETE FROM agendas WHERE id = %s", (aid,))
             continue
         with conn.transaction():
             store_agenda(conn, agenda, url)
