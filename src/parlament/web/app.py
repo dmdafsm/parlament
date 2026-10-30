@@ -423,12 +423,21 @@ def agenda_page(
 ):
     if id and id.startswith("senat-"):
         camera = "senat"
+    # Only agendas with items: a Senate day without a sitting, or not yet published, has none.
     agendas = conn.execute(
-        "SELECT * FROM agendas WHERE chamber = %s ORDER BY first_day DESC NULLS LAST, id DESC LIMIT 30", (camera,)
+        """SELECT a.*, count(*) AS item_count FROM agendas a JOIN agenda_items i ON i.agenda_id = a.id
+           WHERE a.chamber = %s GROUP BY a.id ORDER BY a.first_day DESC NULLS LAST, a.id DESC LIMIT 30""",
+        (camera,),
     ).fetchall()
-    current = next((a for a in agendas if a["id"] == id), agendas[0] if agendas else None)
-    if id and current and current["id"] != id:
-        current = conn.execute("SELECT * FROM agendas WHERE id = %s", (id,)).fetchone() or current
+    today = dt.date.today()
+    if id:
+        current = (
+            next((a for a in agendas if a["id"] == id), None)
+            or conn.execute("SELECT * FROM agendas WHERE id = %s", (id,)).fetchone()
+        )
+    else:  # the next sitting with a published agenda, else the latest one
+        upcoming = [a for a in agendas if a["first_day"] and a["first_day"] >= today]
+        current = upcoming[-1] if upcoming else (agendas[0] if agendas else None)
     items = (
         conn.execute(
             """SELECT i.*, b.status, b.law FROM agenda_items i LEFT JOIN bills b ON b.id = i.bill_id
@@ -438,7 +447,16 @@ def agenda_page(
         if current
         else []
     )
-    return render(request, "agenda.html", agendas=agendas, current=current, items=items, camera=camera)
+    others = [a for a in agendas if current is None or a["id"] != current["id"]]
+    return render(
+        request,
+        "agenda.html",
+        current=current,
+        items=items,
+        camera=camera,
+        upcoming=[a for a in others if a["first_day"] and a["first_day"] >= today],
+        earlier=[a for a in others if not a["first_day"] or a["first_day"] < today],
+    )
 
 
 @app.get("/cauta", response_class=HTMLResponse)

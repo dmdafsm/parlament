@@ -12,13 +12,15 @@
   <a class="button border small" href="{{ current.url }}" rel="noopener"><i>open_in_new</i><span>Sursa oficială</span></a>
   {% if current.pdf_url %}<a class="button border small" href="{{ current.pdf_url }}" rel="noopener"><i>picture_as_pdf</i><span>PDF</span></a>{% endif %}
 </nav>
-<div class="table-wrap"><table class="data">
+{% if items %}<div class="table-wrap"><table class="data">
   <thead><tr><th class="num">#</th><th>Proiect</th><th>Descriere</th></tr></thead>
   <tbody>{% for i in items %}
   <tr><td class="num">{{ i.position or '–' }}</td><td style="white-space:nowrap">{% if i.bill_id %}<a class="link" href="/lege/{{ i.bill_id }}">{{ i.bill_ref }}</a>{% else %}{{ i.bill_ref or '–' }}{% endif %}{% if i.law %}<div class="small-text">{{ i.law }}</div>{% endif %}</td><td>{{ i.text }}</td></tr>
   {% endfor %}</tbody>
 </table></div>
+{% else %}<p class="muted">Pentru această zi nu a fost publicată nicio ordine de zi (nu a avut loc ședință sau ordinea de zi nu este încă publicată).</p>{% endif %}
 {% else %}<p class="muted">Nicio ordine de zi colectată încă.</p>{% endif %}
-{% if agendas|length > 1 %}<h6 class="section-label">Ordini de zi anterioare</h6>
-{% for a in agendas %}<p><a class="link" href="/ordinea-de-zi?camera={{ camera }}&id={{ a.id }}">{{ a.title }}</a></p>{% endfor %}{% endif %}
+{% macro agenda_list(list) %}{% for a in list %}<p><a class="link" href="/ordinea-de-zi?camera={{ camera }}&id={{ a.id }}">{{ a.title }}</a> <span class="small-text muted">· {% set n = a.item_count %}{{ n }} {{ 'punct' if n == 1 else ('de puncte' if n % 100 >= 20 or n % 100 == 0 else 'puncte') }}</span></p>{% endfor %}{% endmacro %}
+{% if upcoming %}<h6 class="section-label">Următoarele ședințe</h6>{{ agenda_list(upcoming|reverse) }}{% endif %}
+{% if earlier %}<h6 class="section-label">Ordini de zi anterioare</h6>{{ agenda_list(earlier) }}{% endif %}
 {% endblock %}

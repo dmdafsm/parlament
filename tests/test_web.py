@@ -247,3 +247,28 @@ def test_a_burst_of_cancelled_requests_does_not_stop_the_site(client):
     finally:
         server.should_exit = True
         thread.join(5)
+
+
+def test_agenda_lists_only_published_days_and_opens_on_the_next_sitting(client, database_url):
+    today = dt.date.today()
+    with db.connect(database_url) as conn:
+        for days, items in ((3, 1), (5, 0)):
+            day = today + dt.timedelta(days=days)
+            aid = f"senat-{day:%Y-%m-%d}"
+            conn.execute(
+                "INSERT INTO agendas (id, chamber, title, first_day, url) VALUES (%s, 'senat', %s, %s, 'u')",
+                (aid, f"Ordinea de zi din {day:%Y-%m-%d}", day),
+            )
+            for seq in range(items):
+                conn.execute(
+                    "INSERT INTO agenda_items VALUES (%s, %s, '1', 'L1/2026', NULL, 'Proiect viitor')", (aid, seq)
+                )
+        conn.commit()
+    soon, empty = today + dt.timedelta(days=3), today + dt.timedelta(days=5)
+    page = client.get("/ordinea-de-zi?camera=senat").text
+    # The next sitting with a published agenda is shown; the day with no items is not listed.
+    assert f"Ordinea de zi din {soon:%Y-%m-%d}" in page and "Proiect viitor" in page
+    assert f"senat-{empty:%Y-%m-%d}" not in page
+    assert "Ordini de zi anterioare" in page and "24 iunie 2025" in page and "2 puncte" in page
+    opened = client.get(f"/ordinea-de-zi?id=senat-{empty:%Y-%m-%d}").text
+    assert "nu a fost publicată nicio ordine de zi" in opened

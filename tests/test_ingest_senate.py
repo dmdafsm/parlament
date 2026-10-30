@@ -57,6 +57,9 @@ def test_bill_agenda_and_biography():
     assert agenda["day"] == dt.date(2025, 6, 24)
     assert [(i["bill_ref"], i["bill_cod"]) for i in agenda["items"]] == [("L1/2025", "900"), ("L7/2025", "901")]
     assert senat_agenda.parse_agenda("<html><body><p>Nimic</p></body></html>", dt.date(2025, 6, 25)) is None
+    # A day without a sitting (or not yet published) has only the heading: no agenda.
+    heading_only = "<html><body><h2>Ordinea de zi a Ședinței Senatului din 25 iunie 2025</h2></body></html>"
+    assert senat_agenda.parse_agenda(heading_only, dt.date(2025, 6, 25)) is None
     biography = senat_members.parse_biography(fixture("senat_biography.html"))
     assert [s["section"] for s in biography] == ["Experiență profesională", "Alte informații"]
     assert biography[0]["entries"][0]["text"].startswith("2020-2024, Profesor\nLiceul Exemplu")
